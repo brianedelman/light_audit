@@ -101,8 +101,13 @@ check:
 collectstatic:
     {{local-env}} {{py}} manage.py collectstatic --noinput
 
-# test: Run pytest locally.
-test *args:
+# test: Run backend pytest + frontend vitest.
+test:
+    {{local-env}} {{py}} -m pytest
+    cd frontend && npm run test
+
+# test-backend: Run pytest locally.
+test-backend *args:
     {{local-env}} {{py}} -m pytest {{args}}
 
 # manage-local: Run arbitrary manage.py command locally.
@@ -126,3 +131,23 @@ celery:
 # celery-beat: Run Celery beat locally.
 celery-beat:
     {{local-env}} {{py}} -m celery -A config.celery_app beat -l info
+
+# ---------------------------------------------------------------------------
+# Frontend commands. Run inside frontend/ directory.
+# ---------------------------------------------------------------------------
+
+# frontend-dev: Start Vite dev server.
+frontend-dev:
+    cd frontend && npm run dev
+
+# frontend-build: Production build.
+frontend-build:
+    cd frontend && npm run build
+
+# frontend-test: Run Vitest.
+frontend-test:
+    cd frontend && npm run test
+
+# frontend-lint: Run ESLint.
+frontend-lint:
+    cd frontend && npm run lint
