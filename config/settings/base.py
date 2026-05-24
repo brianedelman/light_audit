@@ -339,5 +339,17 @@ CHANNEL_LAYERS = {
     },
 }
 
+# CLOUDFLARE R2 STORAGE
+# ------------------------------------------------------------------------------
+R2_ACCOUNT_ID = env("R2_ACCOUNT_ID", default="")
+R2_ACCESS_KEY_ID = env("R2_ACCESS_KEY_ID", default="")
+R2_SECRET_ACCESS_KEY = env("R2_SECRET_ACCESS_KEY", default="")
+R2_BUCKET = env("R2_BUCKET", default="light-audit-media")
+R2_ENDPOINT_URL = env(
+    "R2_ENDPOINT_URL",
+    default=f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com" if R2_ACCOUNT_ID else "",
+)
+R2_PUBLIC_URL = env("R2_PUBLIC_URL", default="")
+
 # Your stuff...
 # ------------------------------------------------------------------------------
