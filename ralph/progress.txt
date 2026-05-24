@@ -1,0 +1,180 @@
+Ralph progress log — Light Audit Platform Phase 1
+Branch: ralph/phase-1
+Started: 2026-05-24
+
+## Codebase Patterns
+- Project uses `postgres:18` base image with custom Dockerfile at `compose/production/postgres/Dockerfile` — shared by both local and production docker-compose
+- Local dev uses `just` recipes; `just test` runs pytest, `just migrate` runs migrations against local postgres on port 5433
+- Ruff is primary linter; mypy has internal errors with django-stubs plugin on Python 3.14 (pre-existing issue)
+- Migrations excluded from ruff via `extend-exclude` in pyproject.toml
+- Pre-existing lint errors in models.py/admin.py/tests.py/views.py — do not fix unless part of story scope
+- `daphne` must be first in INSTALLED_APPS (before django.contrib apps)
+- Test settings use InMemoryChannelLayer; add new WS consumers to `config/routing.py` websocket_urlpatterns
+- Local venv at `.venv/`, use `uv pip install` to add packages
+- Docker postgres needs `docker compose build postgres && docker compose up -d postgres` after Dockerfile changes
+- `.envs/.local/` is gitignored — env file changes must be documented in progress, not tracked in git
+- R2 storage backend at `light_audit/audit/storage.py` — uses S3-compatible API with region="auto"
+- Frontend uses Tailwind CSS v4 with `@tailwindcss/postcss` plugin (not `tailwindcss` PostCSS plugin) — import via `@import "tailwindcss"` in CSS
+- Vitest config separate from vite.config.ts — uses `vitest.config.ts` with jsdom env + `src/test-setup.ts` for jest-dom matchers
+- Frontend test script: `npm run test` runs `vitest run`; `npm run build` runs `tsc -b && vite build`
+- `.gitignore` has global `lib/` rule — files in `frontend/src/lib/` require `git add -f`
+- Custom User model: email-based (no username field). Create with `User.objects.create_user(email=..., password=...)`
+
+---
+
+## 2026-05-24 - US-001
+- Installed pgvector extension in Postgres by adding `postgresql-18-pgvector` package to the production Postgres Dockerfile
+- Added `pgvector==0.4.2` to pyproject.toml dependencies
+- Created migration `0002_enable_pgvector.py` using `VectorExtension()` from pgvector.django
+- **Learnings for future iterations:**
+  - The postgres Dockerfile is at `compose/production/postgres/Dockerfile` and is used by BOTH local and production docker-compose files
+  - pgvector apt package name follows pattern `postgresql-{major_version}-pgvector`
+  - After rebuilding postgres image, existing data volumes persist so no data loss
+  - mypy fails with internal error on this project (Python 3.14 + django-stubs issue) — not a blocker, ruff is the real quality gate
+---
+
+## 2026-05-24 - US-002
+- Installed `channels==4.3.2`, `channels-redis==4.3.0`, `daphne==4.2.1` and added to pyproject.toml
+- Added `daphne` to DJANGO_APPS (must be before django apps), `channels` to THIRD_PARTY_APPS
+- Configured CHANNEL_LAYERS with RedisChannelLayer backend in base.py, InMemoryChannelLayer in test.py
+- Set ASGI_APPLICATION = "config.asgi.application" in base.py
+- Created `config/routing.py` with empty `websocket_urlpatterns` list
+- Rewired `config/asgi.py` to use ProtocolTypeRouter + AuthMiddlewareStack + URLRouter
+- Removed old `config/websocket.py` echo handler (now superseded by Channels routing)
+- Verified daphne and uvicorn both start cleanly
+- All 41 tests pass
+- **Learnings for future iterations:**
+  - `daphne` must be listed BEFORE django.contrib apps in INSTALLED_APPS (it replaces the runserver command)
+  - Test settings should use `channels.layers.InMemoryChannelLayer` to avoid Redis dependency in tests
+  - The justfile `local-env` sets DATABASE_URL, REDIS_URL, USE_DOCKER etc. — use `just test` not bare pytest
+  - ruff ERA001 rule catches comments that look like code — avoid comments like `# django.setup()`
+---
+
+## 2026-05-24 - US-003
+- Added `boto3==1.43.14` explicitly to pyproject.toml (was transitive dep of django-storages[s3])
+- Added R2 settings to `config/settings/base.py`: R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET, R2_ENDPOINT_URL, R2_PUBLIC_URL (all with env defaults)
+- Updated `.envs/.local/.django` with placeholder R2 env vars
+- Created `light_audit/audit/storage.py` with `R2MediaStorage` subclass of `S3Boto3Storage` — sets endpoint_url, region_name="auto", signature_version="s3v4", custom_domain from R2_PUBLIC_URL
+- All 41 tests pass
+- **Learnings for future iterations:**
+  - `.envs/.local/` is gitignored — env file changes won't appear in commits, document in progress instead
+  - `django-storages[s3]` pulls in boto3 transitively but explicit pin keeps lockfile predictable
+  - R2 uses S3-compatible API with `region_name="auto"` and `signature_version="s3v4"`
+---
+
+## 2026-05-24 - US-004
+- Installed @tanstack/react-query, @tanstack/react-table, @tanstack/react-router, axios as runtime deps
+- Installed vitest, @testing-library/react, @testing-library/jest-dom, jsdom as dev deps
+- Installed tailwindcss v4, @tailwindcss/postcss, postcss, autoprefixer as dev deps
+- Created postcss.config.js with @tailwindcss/postcss plugin
+- Replaced index.css content with `@import "tailwindcss"` (Tailwind v4 style)
+- Created vitest.config.ts with jsdom env + test-setup.ts importing jest-dom/vitest matchers
+- Created starter test in src/__tests__/App.test.tsx (renders heading + counter click)
+- Added `"test": "vitest run"` script to package.json
+- All checks pass: `npm run test` (2 tests), `npm run build` (tsc + vite), `npm run lint`
+- **Learnings for future iterations:**
+  - Tailwind CSS v4 uses `@import "tailwindcss"` instead of `@tailwind` directives — no tailwind.config needed
+  - PostCSS plugin is `@tailwindcss/postcss` not `tailwindcss` in v4
+  - Vitest setup file imports `@testing-library/jest-dom/vitest` for matcher types
+  - Existing App.tsx has default Vite template with counter — will be replaced in later stories
+---
+
+## 2026-05-24 - US-005
+- Added Vite proxy config: `/api` → `http://localhost:8001`, `/ws` → `ws://localhost:8001`
+- Created `src/lib/api.ts`: axios instance with baseURL=/api, CSRF cookie extraction, auth 401 redirect
+- Created `src/lib/ws.ts`: WebSocket helper that builds ws/wss URL from current location
+- Mounted TanStack QueryClient provider in `src/main.tsx` with retry=1, staleTime=30s defaults
+- Added tests for api client (baseURL, credentials, CSRF header) and ws helper (URL construction, message parsing, callbacks)
+- All checks pass: test (10 tests), build (tsc + vite), lint
+- **Learnings for future iterations:**
+  - `.gitignore` has global `lib/` rule — files in `frontend/src/lib/` need `git add -f` to stage
+  - Axios `InternalAxiosRequestConfig` type needs cast when testing interceptor handlers directly
+  - QueryClient mounted at app root so all components can use `useQuery`/`useMutation`
+---
+
+## 2026-05-24 - US-006
+- Added `frontend-dev`, `frontend-build`, `frontend-test`, `frontend-lint` recipes to justfile
+- Renamed old `test` → `test-backend`, new `test` runs both backend pytest + frontend vitest sequentially
+- All recipes verified working: test (41 pytest + 10 vitest), build, lint pass
+- **Learnings for future iterations:**
+  - `just test` now runs both suites — use `just test-backend` for backend-only
+  - Frontend recipes just `cd frontend && npm run <script>` — simple and direct
+---
+
+## 2026-05-24 - US-007
+- Updated `.github/workflows/ci.yml` with 3 jobs: `linter` (pre-commit), `pytest` (Docker-based backend), `frontend` (Node 22)
+- Frontend job: npm ci → lint → test → build with npm cache
+- Removed docs build step from pytest job (was unrelated to test gating)
+- Backend job unchanged: Docker bake with GHA cache, migration check, migrate, pytest
+- Files changed: `.github/workflows/ci.yml`
+- **Learnings for future iterations:**
+  - CI backend tests run via Docker compose (same as local Docker flow), not bare pytest
+  - Frontend CI uses `setup-node@v4` with `cache: 'npm'` + `cache-dependency-path` for fast installs
+  - Branch protection rules must be configured separately in GitHub repo settings to require jobs
+---
+
+## 2026-05-24 - US-010
+- Added auto-increment `version_number` logic to AuditVersion via `save()` override (per building, max+1)
+- Added `Meta` with `ordering = ["-version_number"]` and `unique_together = [("building", "version_number")]`
+- Made `source_payload` default to `dict` (blank=True) and `label` blank=True for easier creation
+- Registered AuditVersion in admin with readonly version_number
+- Created migration `0007_audit_version_auto_increment.py`
+- 7 new pytest tests covering: sequential numbering, per-building independence, PROTECT cascade, unique constraint, update stability
+- Files changed: models.py, admin.py, tests.py, migrations/0007
+- **Learnings for future iterations:**
+  - Custom User model uses email as USERNAME_FIELD — no `username` field. Use `User.objects.create_user(email=..., password=...)`
+  - AuditVersion already existed in models from prior (non-ralph) work — this story was about adding the auto-increment logic
+  - `ruff check --fix` handles import sorting (I001) automatically
+---
+
+## 2026-05-24 - US-011
+- Added `clean()` to AuditVersion that raises ValidationError when a published version is modified
+- Added `save()` overrides to Floor, Room, LogEntry that check audit_version status before allowing edits
+- Added admin guards: get_readonly_fields makes all fields readonly on published versions, has_delete_permission returns False
+- 9 new pytest tests covering: clean raises/allows, Floor/Room/LogEntry reject/allow, no-version allow
+- Cleaned up unused imports (attr.validators, msgpack.ext, psycopg) from models.py
+- Files changed: models.py, admin.py, tests.py
+- **Learnings for future iterations:**
+  - Immutability checks query DB for current status (not in-memory) to avoid race conditions
+  - Use `self._state.adding` to skip checks on initial creation
+  - EM101/TRY003 ruff rules require assigning message to variable before raising
+---
+
+## 2026-05-24 - US-012
+- Added KnowledgeDoc model with title, source_path, chunk_text, and embedding VectorField(dimensions=1536) via pgvector.django
+- Created migration `0008_knowledge_doc.py`
+- Registered KnowledgeDoc in admin with list_display and search_fields
+- 3 new pytest tests: create without embedding, create with 1536-dim embedding, retrieve
+- All 60 tests pass
+- Files changed: models.py, admin.py, tests.py, migrations/0008
+- **Learnings for future iterations:**
+  - VectorField from pgvector.django works seamlessly — just import and use with dimensions parameter
+  - Embedding can be null/blank for rows without computed embeddings yet
+  - pgvector extension (from US-001 migration 0002) must run before any VectorField migration
+---
+
+## 2026-05-24 - US-013
+- Added Photo model with all specified fields: building FK (CASCADE), floor FK (SET_NULL), room FK (SET_NULL), log_entry FK (SET_NULL), user FK (SET_NULL), space_name, photo_type (fixture/switch/controls/panorama/video), storage_path, public_url, thumbnail_url, file_size_bytes, mime_type, width, height, duration_seconds, taken_at, uploaded_at, notes
+- Created migration `0009_photo.py`
+- Registered PhotoAdmin with list_display, list_filter, search_fields
+- 6 new pytest tests covering: minimal create, all FKs, CASCADE on building delete, SET_NULL on room/log_entry delete, all photo_type choices
+- All 66 backend + 10 frontend tests pass
+- Files changed: models.py, admin.py, tests.py, migrations/0009
+- **Learnings for future iterations:**
+  - After Django model `.delete()`, the instance's pk is cleared — use `building_id=saved_pk` not `building=instance` in filter queries after delete
+  - Photo uses related_name="media" on room FK (not "photos") to avoid clash with existing RoomPhoto.related_name="photos"
+---
+
+## 2026-05-24 - US-014
+- Added AuditFlag model with fields: log_entry FK (CASCADE), audit_version FK (CASCADE), severity (info/warn/critical), message, status (active/dismissed), dismissed_reason, dismissed_by FK User (SET_NULL), dismissed_at, source_run_id (PositiveIntegerField, nullable — will become FK to AgentRun in US-015)
+- Added `dismiss(user, reason)` method that sets status, dismissed_by, dismissed_reason, dismissed_at
+- Created migration `0010_auditflag.py`
+- Registered AuditFlagAdmin with list_display, list_filter, search_fields
+- 7 new pytest tests: create active flag, dismiss with reason, dismiss without reason, severity choices, cascade on log_entry delete, cascade on audit_version delete, str representation
+- All 73 backend + 10 frontend tests pass
+- Files changed: models.py, admin.py, tests.py, migrations/0010
+- **Learnings for future iterations:**
+  - source_run_id is a nullable PositiveIntegerField for now since AgentRun model doesn't exist yet — US-015 should convert it to a FK
+  - FlagSeverity and FlagStatus TextChoices added for type safety
+  - `django.utils.timezone` import at module top level (PLC0415 rule forbids in-method imports)
+---

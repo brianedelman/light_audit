@@ -134,6 +134,7 @@ class AuditVersion(TimeStampedModel):
             self.version_number = (last or 0) + 1
         super().save(*args, **kwargs)
 
+
 class Floor(TimeStampedModel):
     building = models.ForeignKey(
         Building, on_delete=models.CASCADE, related_name="floors"
@@ -141,7 +142,9 @@ class Floor(TimeStampedModel):
     name = models.CharField(max_length=100)
     level = models.IntegerField(null=True, blank=True)
     sort_order = models.PositiveIntegerField(default=0)
-    audit_version = models.ForeignKey(AuditVersion, on_delete=models.SET_NULL, null=True)
+    audit_version = models.ForeignKey(
+        AuditVersion, on_delete=models.SET_NULL, null=True
+    )
 
     class Meta:
         ordering = ["sort_order", "level"]
@@ -232,7 +235,9 @@ class Room(TimeStampedModel):
     wiring_no_neutral = models.BooleanField(default=False)
 
     notes = models.TextField(blank=True)
-    audit_version = models.ForeignKey(AuditVersion, on_delete=models.SET_NULL, null=True)
+    audit_version = models.ForeignKey(
+        AuditVersion, on_delete=models.SET_NULL, null=True
+    )
 
     def __str__(self):
         return f"{self.floor} / {self.name}"
@@ -346,7 +351,9 @@ class LogEntry(TimeStampedModel):
     )
     notes = models.TextField(blank=True)
 
-    audit_version = models.ForeignKey(AuditVersion, on_delete=models.SET_NULL, null=True)
+    audit_version = models.ForeignKey(
+        AuditVersion, on_delete=models.SET_NULL, null=True
+    )
 
     class Meta:
         verbose_name_plural = "Log entries"
@@ -525,17 +532,25 @@ class FlagStatus(models.TextChoices):
 
 class AuditFlag(TimeStampedModel):
     log_entry = models.ForeignKey(
-        LogEntry, on_delete=models.CASCADE, related_name="audit_flags",
+        LogEntry,
+        on_delete=models.CASCADE,
+        related_name="audit_flags",
     )
     audit_version = models.ForeignKey(
-        AuditVersion, on_delete=models.CASCADE, related_name="audit_flags",
+        AuditVersion,
+        on_delete=models.CASCADE,
+        related_name="audit_flags",
     )
     severity = models.CharField(
-        max_length=10, choices=FlagSeverity.choices, default=FlagSeverity.INFO,
+        max_length=10,
+        choices=FlagSeverity.choices,
+        default=FlagSeverity.INFO,
     )
     message = models.TextField()
     status = models.CharField(
-        max_length=10, choices=FlagStatus.choices, default=FlagStatus.ACTIVE,
+        max_length=10,
+        choices=FlagStatus.choices,
+        default=FlagStatus.ACTIVE,
     )
     dismissed_reason = models.TextField(blank=True)
     dismissed_by = models.ForeignKey(
@@ -546,8 +561,13 @@ class AuditFlag(TimeStampedModel):
         related_name="dismissed_flags",
     )
     dismissed_at = models.DateTimeField(null=True, blank=True)
-    # Will become FK to AgentRun once that model exists (US-015)
-    source_run_id = models.PositiveIntegerField(null=True, blank=True)
+    source_run = models.ForeignKey(
+        "AgentRun",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="flags",
+    )
 
     def __str__(self):
         return f"{self.severity} flag: {self.message[:50]}"
@@ -560,6 +580,69 @@ class AuditFlag(TimeStampedModel):
         self.save()
 
 
+class AgentType(models.TextChoices):
+    AUDIT_REVIEW = "audit_review", "Audit Review"
+    CHATBOT = "chatbot", "Chatbot"
+
+
+class AgentRunStatus(models.TextChoices):
+    RUNNING = "running", "Running"
+    OK = "ok", "OK"
+    ERROR = "error", "Error"
+
+
+class AgentRun(TimeStampedModel):
+    agent_type = models.CharField(max_length=20, choices=AgentType.choices)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="agent_runs",
+    )
+    project = models.ForeignKey(
+        "Project",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="agent_runs",
+    )
+    audit_version = models.ForeignKey(
+        "AuditVersion",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="agent_runs",
+    )
+    prompt_input = models.JSONField(default=dict, blank=True)
+    response_output = models.JSONField(default=dict, blank=True)
+    tokens_in = models.PositiveIntegerField(default=0)
+    tokens_out = models.PositiveIntegerField(default=0)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(
+        max_length=10,
+        choices=AgentRunStatus.choices,
+        default=AgentRunStatus.RUNNING,
+    )
+    error = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"{self.agent_type} run #{self.pk} ({self.status})"
+
+    def mark_ok(self, response, tokens_in, tokens_out):
+        self.status = AgentRunStatus.OK
+        self.response_output = response
+        self.tokens_in = tokens_in
+        self.tokens_out = tokens_out
+        self.finished_at = timezone.now()
+        self.save()
+
+    def mark_error(self, error_text):
+        self.status = AgentRunStatus.ERROR
+        self.error = error_text
+        self.finished_at = timezone.now()
+        self.save()
+
+
 class KnowledgeDoc(TimeStampedModel):
     title = models.CharField(max_length=255)
     source_path = models.CharField(max_length=500, blank=True)
@@ -568,5 +651,6 @@ class KnowledgeDoc(TimeStampedModel):
 
     def __str__(self):
         return self.title
+
 
 

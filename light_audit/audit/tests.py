@@ -3,7 +3,9 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.db.models import ProtectedError
+from django.utils import timezone
 
+from light_audit.audit.models import AgentRun
 from light_audit.audit.models import AuditFlag
 from light_audit.audit.models import AuditVersion
 from light_audit.audit.models import Building
@@ -417,3 +419,91 @@ class TestAuditFlag:
         )
         assert "critical flag:" in str(flag)
         assert len(str(flag)) <= 70  # noqa: PLR2004
+
+
+@pytest.mark.django_db
+class TestAgentRun:
+    def test_create_basic(self, user):
+        run = AgentRun.objects.create(
+            agent_type="audit_review",
+            user=user,
+            prompt_input={"messages": [{"role": "user", "content": "hello"}]},
+            started_at=timezone.now(),
+        )
+        assert run.status == "running"
+        assert run.tokens_in == 0
+        assert run.tokens_out == 0
+        assert run.error == ""
+
+    def test_mark_ok(self, user):
+        run = AgentRun.objects.create(
+            agent_type="audit_review",
+            user=user,
+            started_at=timezone.now(),
+        )
+        run.mark_ok(
+            response={"content": "analysis complete"},
+            tokens_in=500,
+            tokens_out=1200,
+        )
+        run.refresh_from_db()
+        assert run.status == "ok"
+        assert run.tokens_in == 500  # noqa: PLR2004
+        assert run.tokens_out == 1200  # noqa: PLR2004
+        assert run.finished_at is not None
+        assert run.response_output == {"content": "analysis complete"}
+
+    def test_mark_error(self, user):
+        run = AgentRun.objects.create(
+            agent_type="chatbot",
+            user=user,
+            started_at=timezone.now(),
+        )
+        run.mark_error("API timeout after 30s")
+        run.refresh_from_db()
+        assert run.status == "error"
+        assert run.error == "API timeout after 30s"
+        assert run.finished_at is not None
+
+    def test_with_project_and_version(self, user, project, building):
+        version = AuditVersion.objects.create(
+            building=building, created_by=user, label="v1",
+        )
+        run = AgentRun.objects.create(
+            agent_type="audit_review",
+            user=user,
+            project=project,
+            audit_version=version,
+            started_at=timezone.now(),
+        )
+        assert run.project == project
+        assert run.audit_version == version
+
+    def test_cascade_on_user_delete(self, user):
+        AgentRun.objects.create(
+            agent_type="chatbot",
+            user=user,
+            started_at=timezone.now(),
+        )
+        user.delete()
+        assert AgentRun.objects.count() == 0
+
+    def test_set_null_on_project_delete(self, user, project):
+        run = AgentRun.objects.create(
+            agent_type="audit_review",
+            user=user,
+            project=project,
+            started_at=timezone.now(),
+        )
+        project.delete()
+        run.refresh_from_db()
+        assert run.project is None
+
+    def test_str_representation(self, user):
+        run = AgentRun.objects.create(
+            agent_type="audit_review",
+            user=user,
+            started_at=timezone.now(),
+        )
+        assert "audit_review" in str(run)
+        assert "running" in str(run)

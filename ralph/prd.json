@@ -1,0 +1,852 @@
+{
+  "project": "Light Audit Platform",
+  "branchName": "ralph/phase-1",
+  "description": "Phase 1: Django+React internal platform — PWA audit tool, sync to backend, R2 media, audit review with streaming Claude agent, project landing + versioning.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Enable pgvector extension in Postgres",
+      "description": "As a developer, I need pgvector enabled so KnowledgeDoc embeddings work later.",
+      "acceptanceCriteria": [
+        "Postgres image in docker-compose.local.yml swapped to pgvector/pgvector:pg16 (or extension installed in existing image)",
+        "Django migration runs `CREATE EXTENSION IF NOT EXISTS vector`",
+        "`pgvector` Python package added to pyproject.toml",
+        "Backend tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Wire Django Channels with Redis channel layer",
+      "description": "As a developer, I need ASGI + Channels configured so streaming WebSocket consumers work.",
+      "acceptanceCriteria": [
+        "`channels` and `channels-redis` added to pyproject.toml",
+        "`config/asgi.py` wired with ProtocolTypeRouter + AuthMiddlewareStack + URLRouter",
+        "`config/routing.py` created with empty websocket_urlpatterns list",
+        "Redis channel layer configured in settings via CHANNEL_LAYERS",
+        "Server starts via daphne/uvicorn without errors",
+        "Backend tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Add Cloudflare R2 storage settings (no usage yet)",
+      "description": "As a developer, I need R2 env vars + django-storages S3 backend configured for later media wiring.",
+      "acceptanceCriteria": [
+        "`django-storages[s3]` and `boto3` added to pyproject.toml",
+        "R2 settings in config/settings/base.py: R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET, R2_ENDPOINT_URL, R2_PUBLIC_URL",
+        ".envs/.local/.django updated with placeholder R2 vars",
+        "S3Boto3Storage subclass for R2 created with endpoint_url override",
+        "Backend tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Install frontend deps (TanStack, Vitest, Tailwind)",
+      "description": "As a developer, I need TanStack Query/Table/Router, Vitest + Testing Library, Tailwind installed in frontend/.",
+      "acceptanceCriteria": [
+        "frontend/package.json adds: @tanstack/react-query, @tanstack/react-table, @tanstack/react-router, axios",
+        "Adds: vitest, @testing-library/react, @testing-library/jest-dom, jsdom",
+        "Adds: tailwindcss, postcss, autoprefixer; tailwind.config + postcss.config + base CSS created",
+        "vitest.config.ts created with jsdom env + setup file",
+        "Starter test in src/__tests__ passes via `npm run test`",
+        "`npm run build` succeeds",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Configure Vite proxy + frontend API client",
+      "description": "As a developer, I need Vite dev server to proxy /api and /ws to Django, and a typed fetch client.",
+      "acceptanceCriteria": [
+        "vite.config.ts proxies /api → http://localhost:8001 and /ws → ws://localhost:8001",
+        "src/lib/api.ts: axios instance with baseURL=/api, CSRF + auth handling",
+        "src/lib/ws.ts: WebSocket helper that connects to /ws/<path>",
+        "TanStack QueryClient provider mounted in src/main.tsx",
+        "Frontend tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Add justfile recipes for frontend + combined test",
+      "description": "As a developer, I want unified just commands for frontend dev/build/test and a combined test runner.",
+      "acceptanceCriteria": [
+        "justfile adds: `frontend-dev`, `frontend-build`, `frontend-test`, `frontend-lint`",
+        "justfile adds: `test` recipe that runs backend pytest + frontend vitest",
+        "Each recipe runs successfully",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "CI workflow runs backend + frontend tests",
+      "description": "As a developer, I need GitHub Actions to gate merges on both test suites.",
+      "acceptanceCriteria": [
+        ".github/workflows/ci.yml runs on PR + push to main",
+        "Job 1: backend pytest + ruff lint (Postgres + Redis services in CI)",
+        "Job 2: frontend `npm ci && npm run lint && npm run test && npm run build`",
+        "Both jobs required for merge",
+        "CI passes on current main"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Add Project model",
+      "description": "As a developer, I need a Project table to group buildings.",
+      "acceptanceCriteria": [
+        "Project model in light_audit/audit/models.py: name, client, building_type, status, created_at, updated_at, owner FK to User",
+        "Migration generated + applied cleanly",
+        "Admin registration",
+        "Pytest covers basic CRUD",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Link Building → Project, migrate client field",
+      "description": "As a developer, I need Building.project FK and existing Building.client value migrated onto Project.",
+      "acceptanceCriteria": [
+        "Building gains project = FK(Project, related_name='buildings', null=True initially)",
+        "Data migration creates Project from existing Building.client values (or assigns to a default Project)",
+        "After data migration, Building.project made non-null",
+        "Building.client field removed",
+        "Pytest covers migration outcome on fixture data",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Add AuditVersion model + snapshot FKs",
+      "description": "As a developer, I need AuditVersion to snapshot field captures and link rooms/floors/log entries to a version.",
+      "acceptanceCriteria": [
+        "Auto-increment version_number in AuditVersion model on save (per building)",
+        "Pytest covers version_number sequencing + cascade",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Enforce published-version immutability",
+      "description": "As a developer, I need published AuditVersion rows to reject edits to themselves + descendants.",
+      "acceptanceCriteria": [
+        "AuditVersion.clean() raises if status='published' and existing instance modified",
+        "Floor/Room/LogEntry.save() rejects edits if their audit_version.status='published'",
+        "Admin guards published versions",
+        "Pytest covers reject + allow paths",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Add KnowledgeDoc model with pgvector column",
+      "description": "As a developer, I need schema placeholder for embeddings (no ingest).",
+      "acceptanceCriteria": [
+        "KnowledgeDoc model: title, source_path, chunk_text, embedding VectorField(dimensions=1536) via pgvector.django",
+        "Migration applies cleanly against pgvector-enabled Postgres",
+        "Pytest creates + retrieves a row (without semantic search)",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Add Photo model + signals",
+      "description": "As a developer, I need media metadata table linked to log entries.",
+      "acceptanceCriteria": [
+        "Photo model fields: building FK, floor FK (null), room FK (null), space_name, photo_type ('fixture'|'switch'|'controls'|'panorama'|'video'), storage_path, public_url, thumbnail_url, file_size_bytes, mime_type, width, height, duration_seconds, taken_at, uploaded_at, user FK, log_entry FK (null), notes",
+        "Migration applied",
+        "Admin registration",
+        "Pytest covers FK relations",
+        "Typecheck passes"
+      ],
+      "priority": 13,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Add AuditFlag model with dismissal",
+      "description": "As a developer, I need dismissible flag rows attached to log entries.",
+      "acceptanceCriteria": [
+        "AuditFlag: log_entry FK, audit_version FK, severity ('info'|'warn'|'critical'), message, status ('active'|'dismissed'), dismissed_reason, dismissed_by FK User (null), dismissed_at, source_run_id (null FK to AgentRun)",
+        "Migration applied",
+        "Pytest covers active/dismissed transitions",
+        "Typecheck passes"
+      ],
+      "priority": 14,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "Add AgentRun model for Claude call logging",
+      "description": "As a developer, I need every Claude API call recorded.",
+      "acceptanceCriteria": [
+        "Pytest covers basic create + status transitions for AgentRun model",
+        "Typecheck passes"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-017",
+      "title": "Auth API: login/logout endpoints",
+      "description": "As an internal user, I want to log in via API.",
+      "acceptanceCriteria": [
+        "Django ninja endpoints: POST /api/auth/login, POST /api/auth/logout, GET /api/auth/me",
+        "Session auth (cookie-based) with CSRF",
+        "Email used as USERNAME_FIELD on custom User model (or auth backend that accepts email)",
+        "All non-auth API endpoints require authentication (django ninja default permission)",
+        "Pytest covers happy path + 401 on unauth",
+        "Typecheck passes"
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-020",
+      "title": "Frontend: login + password reset pages",
+      "description": "As a user, I want React pages for login, reset request, reset confirm.",
+      "acceptanceCriteria": [
+        "Routes: /login, /password-reset, /password-reset/confirm/:token",
+        "Forms use TanStack Query mutations against /api/auth/*",
+        "Redirect to / on successful login; logged-in users redirected away from /login",
+        "Auth context/provider tracks current user",
+        "Frontend tests cover form submission + auth context",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 20,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-021",
+      "title": "Django ninja schemas + api endpoints for Project/Building/AuditVersion",
+      "description": "As a developer, I need REST endpoints to list/retrieve projects, buildings, versions.",
+      "acceptanceCriteria": [
+        "django ninja endpoints registered at /api/projects, /api/buildings, /api/audit-versions",
+        "Nested routes: /api/projects/{id}/buildings, /api/buildings/{id}/audit-versions",
+        "Read-only for now (no PUT/PATCH); POST for create",
+        "Auth required",
+        "Pytest covers list + retrieve + permissions",
+        "Typecheck passes"
+      ],
+      "priority": 21,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-022",
+      "title": "Sync API: POST /api/audits/sync",
+      "description": "As a PWA client, I want to push a full audit payload that creates an AuditVersion snapshot.",
+      "acceptanceCriteria": [
+        "POST /api/audits/sync accepts JSON: { building_uuid, base_version_uuid (null), payload: { rooms[], log_entries[], ... } }",
+        "Creates new AuditVersion + child Floor/Room/LogEntry records",
+        "Idempotent on client-supplied UUIDs (replays return existing version)",
+        "Stores raw payload on AuditVersion.source_payload",
+        "Pytest covers create + idempotent replay",
+        "Typecheck passes"
+      ],
+      "priority": 22,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-023",
+      "title": "Sync API: GET version pull + push-to-iPad marker",
+      "description": "As a PWA client, I want to pull a specific version and see which is available to load.",
+      "acceptanceCriteria": [
+        "GET /api/audits/{version_id} returns full payload for PWA hydration",
+        "GET /api/projects/{id}/audits lists versions",
+        "POST /api/audit-versions/{id}/push-to-ipad sets status='pushed_to_ipad'",
+        "GET /api/buildings/{id}/available-version returns version with pushed_to_ipad status if newer than client",
+        "Pytest covers each endpoint",
+        "Typecheck passes"
+      ],
+      "priority": 23,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-024",
+      "title": "R2 media: presigned multipart upload endpoints",
+      "description": "As a PWA client, I want to upload large files directly to R2 via S3 multipart.",
+      "acceptanceCriteria": [
+        "POST /api/media/multipart/start → creates Photo row (status=uploading), calls R2 CreateMultipartUpload, returns upload_id + storage_path",
+        "POST /api/media/multipart/sign-part → returns presigned PUT URL for a given part_number",
+        "POST /api/media/multipart/complete → calls R2 CompleteMultipartUpload with part ETags, updates Photo (status=uploaded, public_url)",
+        "POST /api/media/multipart/abort → calls AbortMultipartUpload",
+        "Pytest covers each endpoint with mocked boto3",
+        "Typecheck passes"
+      ],
+      "priority": 24,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-025",
+      "title": "Celery task: generate thumbnail on Photo upload",
+      "description": "As a developer, I need a 300x300 thumbnail produced after upload.",
+      "acceptanceCriteria": [
+        "Celery task `generate_thumbnail(photo_id)` downloads from R2, resizes via Pillow, uploads thumbnail to R2 path",
+        "Task triggered on Photo.status transition to 'uploaded' (post_save signal)",
+        "Photo.thumbnail_url populated on completion",
+        "Pytest covers task with mocked R2 + Pillow",
+        "Typecheck passes"
+      ],
+      "priority": 25,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-026",
+      "title": "html_app bundler script",
+      "description": "As a developer, I want a bundler that inlines split files OR passes through single-file html_app.",
+      "acceptanceCriteria": [
+        "scripts/bundle_html_app.py (or .js) reads html_app/app.html",
+        "If app.html has placeholder/link refs, inlines app.css into <style> and app.js into <script>",
+        "If app.html already has inline <style>/<script>, passes through unchanged",
+        "Emits dist/audit-pwa/index.html",
+        "justfile recipe: `just html-app-build`",
+        "Tests cover both split-file and single-file inputs",
+        "Typecheck passes"
+      ],
+      "priority": 26,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-027",
+      "title": "PWA manifest + iOS meta + icons",
+      "description": "As a field auditor, I want the audit tool installable on iPad.",
+      "acceptanceCriteria": [
+        "html_app/manifest.json with name, icons (192, 512), start_url, display: standalone, theme/background color",
+        "iOS meta tags injected into app.html (apple-mobile-web-app-capable, status-bar-style, apple-touch-icon links)",
+        "App icons placed in html_app/icons/",
+        "Bundler copies manifest + icons to dist/audit-pwa/",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 27,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-028",
+      "title": "PWA service worker with versioned cache",
+      "description": "As a field auditor, I want the PWA to boot fully offline.",
+      "acceptanceCriteria": [
+        "html_app/sw.js implements cache-first strategy with version-stamped cache key",
+        "Caches index.html, manifest, icons, and any external assets",
+        "Service worker registration script added to app.html",
+        "Old cache versions cleaned on activate",
+        "Lighthouse PWA audit passes installable criteria",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 28,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-029",
+      "title": "Django route serves bundled PWA at /audit/",
+      "description": "As a field auditor, I want to load the PWA from the Django app.",
+      "acceptanceCriteria": [
+        "Django view serves dist/audit-pwa/index.html at /audit/",
+        "Static assets (sw.js, manifest.json, icons/) served with correct MIME types",
+        "Service-Worker-Allowed header set; sw.js served with no-cache",
+        "Pytest covers route returns 200 + correct content-type",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 29,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-030",
+      "title": "PWA IndexedDB storage module (new file)",
+      "description": "As a developer, I want a self-contained IndexedDB module for blobs + audit JSON that html_app/app.js can call.",
+      "acceptanceCriteria": [
+        "html_app/storage.js exposes: getJSON(key), setJSON(key, value), putBlob(id, blob, meta), getBlob(id), listBlobs(filter), deleteBlob(id)",
+        "Uses idb wrapper or raw IndexedDB; two object stores: 'json' and 'blobs'",
+        "Bundler inlines storage.js after app.js",
+        "Frontend tests (vitest + fake-indexeddb) cover read/write/delete",
+        "Typecheck passes"
+      ],
+      "priority": 30,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-031",
+      "title": "PWA localStorage shim + auto-migrate to IndexedDB",
+      "description": "As a developer, I want a localStorage shim that proxies to IndexedDB so app.js JSON storage just works, and any existing localStorage data migrates on first boot.",
+      "acceptanceCriteria": [
+        "html_app/storage-shim.js installs window.__auditStorage proxy with in-memory cache hydrated from IndexedDB on boot",
+        "Provides sync getItem/setItem/removeItem API",
+        "On first boot, copies all existing localStorage keys to IndexedDB then clears localStorage",
+        "Boot blocks app.js execution until hydration complete",
+        "Frontend tests cover shim + migration",
+        "Typecheck passes"
+      ],
+      "priority": 31,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-032",
+      "title": "PWA media capture: store Blobs in IndexedDB",
+      "description": "As a field auditor, I want photo/video captures stored as Blobs (not base64) in IndexedDB.",
+      "acceptanceCriteria": [
+        "Edit app.js photo/video capture call sites to call storage.putBlob() instead of base64-into-JSON",
+        "Audit JSON references blobs by id, not inline data",
+        "Existing base64 entries auto-migrated to blob store on first boot",
+        "Frontend tests cover capture + retrieval",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 32,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-033",
+      "title": "PWA client-side photo compression",
+      "description": "As a field auditor, I want photos resized to ~2MB before storage.",
+      "acceptanceCriteria": [
+        "html_app/compress.js: resizes via canvas, JPEG quality tuned to ~2MB target",
+        "EXIF timestamp extracted via exif-js (or raw parse) and preserved",
+        "Capture pipeline runs compress before storage.putBlob()",
+        "Frontend tests cover compression output size + EXIF retention",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 33,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-034",
+      "title": "PWA video length cap",
+      "description": "As a field auditor, I want videos over 30s rejected with a message.",
+      "acceptanceCriteria": [
+        "Video capture handler reads duration; rejects > 30s",
+        "User-facing message rendered on rejection",
+        "Panoramas (photo_type='panorama') exempt from compression",
+        "Frontend tests cover accept + reject paths",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 34,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-035",
+      "title": "PWA sync queue: enqueue changes offline",
+      "description": "As a field auditor, I want audit data + media uploads queued when offline.",
+      "acceptanceCriteria": [
+        "html_app/sync-queue.js: persists queue items in IndexedDB ('sync_queue' store)",
+        "Queue items: { id, type ('audit'|'media'), payload | blob_id, retry_count, last_error }",
+        "Public API: enqueueAudit(payload), enqueueMedia(blob_id, meta), peek(), markDone(id), markFailed(id, err)",
+        "Frontend tests cover enqueue, retry counter, drain order",
+        "Typecheck passes"
+      ],
+      "priority": 35,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-036",
+      "title": "PWA sync drain: in-app polling loop",
+      "description": "As a field auditor, I want queued items uploaded automatically while PWA is open and connectivity returns.",
+      "acceptanceCriteria": [
+        "Polling loop runs every 10s while online + PWA visible",
+        "Audit items POST to /api/audits/sync",
+        "Media items use R2 multipart endpoints (start → sign-part → complete)",
+        "Exponential backoff on failure (10s → 30s → 2m → 10m)",
+        "UI status indicator shows queue length + active uploads",
+        "Frontend tests cover drain + backoff",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 36,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-037",
+      "title": "Frontend: projects list page",
+      "description": "As an internal user, I want to see all projects.",
+      "acceptanceCriteria": [
+        "Route /projects renders list via TanStack Query against /api/projects",
+        "Each row: name, client, status, building count",
+        "Click row → /projects/{id}",
+        "Frontend tests cover list render + navigation",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 37,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-038",
+      "title": "Frontend: project detail with buildings + versions",
+      "description": "As an internal user, I want to see a project's buildings and each building's audit versions.",
+      "acceptanceCriteria": [
+        "Route /projects/{id} shows project metadata + buildings list",
+        "Each building expands to TanStack Table of audit versions (number, label, status, created_by, created_at)",
+        "Frontend tests cover render + table sort",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 38,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-039",
+      "title": "Frontend: push-to-iPad + duplicate version actions",
+      "description": "As an internal user, I want buttons to push a version to iPad and to duplicate a version.",
+      "acceptanceCriteria": [
+        "Push button calls POST /api/audit-versions/{id}/push-to-ipad; row status updates",
+        "Duplicate button creates new draft version from existing one (backend endpoint POST /api/audit-versions/{id}/duplicate added)",
+        "Pytest covers duplicate endpoint",
+        "Frontend tests cover button actions",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 39,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-040",
+      "title": "Frontend: building → floor → room navigation",
+      "description": "As a reviewer, I want to navigate into a specific room within an audit version.",
+      "acceptanceCriteria": [
+        "Routes: /audit-versions/{id}, /audit-versions/{id}/floors/{floor_id}, /audit-versions/{id}/rooms/{room_id}",
+        "Sidebar tree of floors → rooms; click navigates",
+        "Frontend tests cover tree render + navigation",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 40,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-041",
+      "title": "Frontend: room view with log entries table (read-only)",
+      "description": "As a reviewer, I want to see all log entries for a room.",
+      "acceptanceCriteria": [
+        "Room view renders log entries via TanStack Table",
+        "Columns: fixture_id, qty, wattage, switch_type, controls, mount_type, flags (icons), notes",
+        "Read-only; sortable + filterable",
+        "Frontend tests cover render + sort",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 41,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-042",
+      "title": "Frontend: room photo grid + lightbox",
+      "description": "As a reviewer, I want to see photos for a room and open full-resolution on click.",
+      "acceptanceCriteria": [
+        "Photo grid renders thumbnails (thumbnail_url) for room's photos",
+        "Click thumbnail opens lightbox with full-resolution public_url",
+        "Keyboard nav (arrow keys + Esc)",
+        "Frontend tests cover grid + lightbox open/close",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 42,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-043",
+      "title": "Frontend: panorama viewer (Pannellum)",
+      "description": "As a reviewer, I want 360° panoramas to open in Pannellum, not as flat images.",
+      "acceptanceCriteria": [
+        "Pannellum installed; PanoramaViewer component wraps it",
+        "Photos with photo_type='panorama' open in PanoramaViewer instead of standard lightbox",
+        "Frontend tests cover dispatch (unit-test the type check + component choice)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 43,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-044",
+      "title": "Frontend: render AuditFlags inline + dismiss UI",
+      "description": "As a reviewer, I want to see flags on log entry rows and dismiss them with a reason.",
+      "acceptanceCriteria": [
+        "Flag column in log entries table shows severity-colored badges",
+        "Click badge opens flag detail panel with message + dismiss button",
+        "Dismiss opens modal asking for reason → POST /api/audit-flags/{id}/dismiss { reason } (backend endpoint added)",
+        "Pytest covers dismiss endpoint",
+        "Frontend tests cover badge + dismiss modal flow",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 44,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-045",
+      "title": "Anthropic SDK wrapper that enforces AgentRun logging",
+      "description": "As a developer, I need a single wrapper that every Claude call goes through and that auto-creates AgentRun rows.",
+      "acceptanceCriteria": [
+        "audit/llm.py exposes `run_agent(agent_type, user, project, audit_version, messages, stream=False)` context manager",
+        "Creates AgentRun on enter with status='running'; updates on exit with response, tokens, status",
+        "Records errors with stack trace",
+        "Direct calls to anthropic SDK outside wrapper prohibited (lint rule or test)",
+        "Pytest mocks SDK + asserts AgentRun created",
+        "Typecheck passes"
+      ],
+      "priority": 45,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-046",
+      "title": "Audit review Channels consumer (streaming)",
+      "description": "As a reviewer, I want chat messages to stream from Claude over WebSocket.",
+      "acceptanceCriteria": [
+        "AsyncJsonWebsocketConsumer at /ws/audit-review/{audit_version_id}/",
+        "Auth-gated (rejects anonymous)",
+        "Receives { prompt, predefined_prompt_id (null) }; calls llm.run_agent with audit data context, streams tokens back",
+        "Conversation history maintained per consumer connection",
+        "Pytest covers consumer using channels.testing.WebsocketCommunicator",
+        "Typecheck passes"
+      ],
+      "priority": 46,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-047",
+      "title": "Predefined prompts seed + admin",
+      "description": "As an admin, I want a place to manage predefined audit-review prompts.",
+      "acceptanceCriteria": [
+        "PredefinedPrompt model: name, prompt_text, agent_type, active bool",
+        "Migration + admin registration",
+        "Seed fixture with 2-3 placeholder prompts (content TBD)",
+        "GET /api/predefined-prompts endpoint",
+        "Pytest covers list endpoint",
+        "Typecheck passes"
+      ],
+      "priority": 47,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-048",
+      "title": "Frontend: audit review chat panel",
+      "description": "As a reviewer, I want a chat panel on the audit review page with predefined prompt dropdown + freeform input + streaming output.",
+      "acceptanceCriteria": [
+        "Chat panel mounted on /audit-versions/{id} view",
+        "Predefined prompt dropdown populated from /api/predefined-prompts",
+        "Send opens WebSocket to /ws/audit-review/{id}/ and streams tokens into message bubble",
+        "Iterative follow-ups append to same conversation",
+        "Frontend tests cover WS connect + token stream render (mocked WS)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 48,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-049",
+      "title": "Persist flags from agent run + inject dismissed reasons",
+      "description": "As a reviewer, I want agent-emitted flags persisted, and dismissed flags' reasons fed back into subsequent prompts.",
+      "acceptanceCriteria": [
+        "Audit review consumer parses structured flag output from Claude (JSON block in response)",
+        "Creates AuditFlag rows linked to log_entries + audit_version + source_run_id",
+        "When building prompt context, includes prior dismissed flags + their reasons in system prompt",
+        "Pytest mocks Claude output + asserts AuditFlag rows + dismissed-context injection",
+        "Typecheck passes"
+      ],
+      "priority": 49,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-050",
+      "title": "Audit spreadsheet export (CSV/XLSX)",
+      "description": "As a reviewer, I want to export the annotated audit data as a spreadsheet.",
+      "acceptanceCriteria": [
+        "POST /api/audit-versions/{id}/export/xlsx returns .xlsx with log entries + added columns + red-flag column",
+        "POST /api/audit-versions/{id}/export/csv returns .csv equivalent",
+        "Generated via openpyxl + csv stdlib",
+        "Pytest covers content + column shape",
+        "Typecheck passes"
+      ],
+      "priority": 50,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-051",
+      "title": "Narrative .docx export",
+      "description": "As a reviewer, I want to export the agent narrative as a .docx document.",
+      "acceptanceCriteria": [
+        "POST /api/audit-versions/{id}/export/docx returns .docx",
+        "Generated via python-docx; pulls from latest audit_review AgentRun's narrative output",
+        "Sections: summary, per-flag detail with reasoning",
+        "Pytest covers generation",
+        "Typecheck passes"
+      ],
+      "priority": 51,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-052",
+      "title": "Frontend: export buttons on audit review page",
+      "description": "As a reviewer, I want buttons to trigger CSV/XLSX/DOCX downloads.",
+      "acceptanceCriteria": [
+        "Three buttons: Export CSV, Export XLSX, Export DOCX",
+        "Each triggers download via blob URL",
+        "Frontend tests cover button → API call wiring (mocked)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 52,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-053",
+      "title": "Project chatbot Channels consumer",
+      "description": "As an internal user, I want a project-scope chatbot.",
+      "acceptanceCriteria": [
+        "Consumer at /ws/project-chat/{project_id}/",
+        "Auth-gated; scope-limited prompt assembly (project metadata only, not audit/spec data)",
+        "Calls llm.run_agent with agent_type='chatbot'",
+        "Pytest covers consumer + scope guard",
+        "Typecheck passes"
+      ],
+      "priority": 53,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-054",
+      "title": "Frontend: project chatbot panel",
+      "description": "As an internal user, I want a chatbot widget on project pages.",
+      "acceptanceCriteria": [
+        "Persistent chat panel on /projects and /projects/{id}",
+        "WS connect to /ws/project-chat/{project_id}/",
+        "Frontend tests cover render + WS message flow (mocked)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 54,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-055",
+      "title": "html_app data-sync alignment review doc",
+      "description": "As a stakeholder, I need a written analysis of html_app's sync payload vs backend needs.",
+      "acceptanceCriteria": [
+        "docs/html-app-data-sync-review.md created",
+        "Enumerates every field emitted by html_app/app.js in sync payload",
+        "Maps each field to a Django model field (or flags as unmapped/lossy/ambiguous)",
+        "Lists fields backend needs but PWA does not emit",
+        "Lists fields PWA emits that nothing consumes",
+        "Flags Phase 2 spec-engine blockers",
+        "Recommendations for minimal PWA changes for Phase 1 end-to-end sync"
+      ],
+      "priority": 55,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-056",
+      "title": "Deployment: Django ASGI + Celery on Render (or equivalent)",
+      "description": "As an internal user, I want the platform reachable at a custom domain.",
+      "acceptanceCriteria": [
+        "render.yaml updated: web service runs daphne/uvicorn (ASGI), worker runs Celery, beat service",
+        "Managed Postgres with pgvector + Redis provisioned",
+        "Frontend production build served (via Django whitenoise or static host)",
+        "Custom domain + HTTPS enforced",
+        "Env vars + secrets documented in README",
+        "Deploy succeeds; smoke test: login + load /projects works in prod",
+        "CI passes"
+      ],
+      "priority": 56,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-018",
+      "title": "Auth API: password reset flow",
+      "description": "As a user, I want to reset my password via email link.",
+      "acceptanceCriteria": [
+        "POST /api/auth/password-reset → sends email with token link",
+        "POST /api/auth/password-reset/confirm → accepts token + new password",
+        "Email template renders with reset URL pointing to frontend route",
+        "Mailpit receives email in dev",
+        "Pytest covers token issue + confirm + invalid-token reject",
+        "Typecheck passes"
+      ],
+      "priority": 18,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}

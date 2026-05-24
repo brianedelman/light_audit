@@ -1,5 +1,6 @@
 from django.contrib import admin
 
+from .models import AgentRun
 from .models import AuditFlag
 from .models import AuditVersion
 from .models import Building
@@ -288,6 +289,17 @@ class PhotoAdmin(admin.ModelAdmin):
 class KnowledgeDocAdmin(admin.ModelAdmin):
     list_display = ("title", "source_path", "created")
     search_fields = ("title", "source_path", "chunk_text")
+
+
+@admin.register(AgentRun)
+class AgentRunAdmin(admin.ModelAdmin):
+    list_display = (
+        "id", "agent_type", "user", "project",
+        "status", "tokens_in", "tokens_out", "started_at", "finished_at",
+    )
+    list_filter = ("agent_type", "status")
+    search_fields = ("user__email", "project__name", "error")
+    readonly_fields = ("started_at", "finished_at")
 
 
 @admin.register(AuditFlag)
