@@ -1,20 +1,20 @@
 from django.contrib import admin
 
-from .models import (
-    Building,
-    CatalogModifier,
-    CatalogProduct,
-    Floor,
-    FloorPlan,
-    FloorPlanPin,
-    LightLevelReading,
-    LogEntry,
-    ProductAccessory,
-    Room,
-    RoomNote,
-    RoomPhoto,
-    SpecItem,
-)
+from .models import AuditVersion
+from .models import Building
+from .models import CatalogModifier
+from .models import CatalogProduct
+from .models import Floor
+from .models import FloorPlan
+from .models import FloorPlanPin
+from .models import LightLevelReading
+from .models import LogEntry
+from .models import ProductAccessory
+from .models import Project
+from .models import Room
+from .models import RoomNote
+from .models import RoomPhoto
+from .models import SpecItem
 
 
 class FloorInline(admin.TabularInline):
@@ -32,7 +32,14 @@ class LogEntryInline(admin.TabularInline):
     model = LogEntry
     extra = 0
     show_change_link = True
-    fields = ("fixture_id", "description", "qty", "wattage", "mount_type", "switch_type")
+    fields = (
+        "fixture_id",
+        "description",
+        "qty",
+        "wattage",
+        "mount_type",
+        "switch_type",
+    )
 
 
 class SpecItemInline(admin.TabularInline):
@@ -60,19 +67,46 @@ class LightLevelReadingInline(admin.TabularInline):
     extra = 0
 
 
+@admin.register(Project)
+class ProjectAdmin(admin.ModelAdmin):
+    list_display = (
+        "name",
+        "client",
+        "project_type",
+        "status",
+        "owner",
+        "modified",
+    )
+    list_filter = ("status", "project_type")
+    search_fields = ("name", "project_type", "client")
+
+
+@admin.register(AuditVersion)
+class AuditVersionAdmin(admin.ModelAdmin):
+    list_display = (
+        "building",
+        "version_number",
+        "label",
+        "status",
+        "created_by",
+        "created",
+    )
+    list_filter = ("status", "building")
+    search_fields = ("building__name", "label")
+    readonly_fields = ("version_number",)
+
+
 @admin.register(Building)
 class BuildingAdmin(admin.ModelAdmin):
     list_display = (
         "name",
-        "client",
         "building_type",
         "state",
         "square_feet",
-        "project_type",
-        "updated_at",
+        "modified",
     )
-    list_filter = ("building_type", "project_type", "state")
-    search_fields = ("name", "address", "client", "auditor", "utility")
+    list_filter = ("building_type", "state")
+    search_fields = ("name", "address", "project__client", "auditor", "utility")
     inlines = [FloorInline]
 
 
@@ -113,13 +147,13 @@ class RoomAdmin(admin.ModelAdmin):
 
 @admin.register(RoomPhoto)
 class RoomPhotoAdmin(admin.ModelAdmin):
-    list_display = ("room", "caption", "created_at")
+    list_display = ("room", "caption", "created")
     search_fields = ("room__name", "caption")
 
 
 @admin.register(RoomNote)
 class RoomNoteAdmin(admin.ModelAdmin):
-    list_display = ("room", "created_at")
+    list_display = ("room", "created")
     search_fields = ("room__name", "text")
 
 
@@ -145,30 +179,62 @@ class LogEntryAdmin(admin.ModelAdmin):
     search_fields = ("fixture_id", "description", "room__name", "facility")
     inlines = [SpecItemInline]
     fieldsets = (
-        (None, {
-            "fields": (
-                "room", "location", "fixture_id", "description",
-                "qty", "wattage", "mount_height",
-            ),
-        }),
-        ("Location info", {
-            "fields": ("facility", "floor", "space_zone"),
-        }),
-        ("Controls", {
-            "fields": ("switch_type", "controls", "ctrl_hours", "mount_type", "optic"),
-        }),
-        ("Interior flags", {
-            "fields": (
-                "flag_integral_sensor", "flag_embb", "flag_air_return",
-                "flag_wire_guard", "flag_volt_480", "flag_em_gen",
-            ),
-        }),
-        ("Exterior flags", {
-            "fields": (
-                "flag_photocell", "flag_twistlock_pc",
-                "flag_wet_location", "flag_dark_sky",
-            ),
-        }),
+        (
+            None,
+            {
+                "fields": (
+                    "room",
+                    "location",
+                    "fixture_id",
+                    "description",
+                    "qty",
+                    "wattage",
+                    "mount_height",
+                ),
+            },
+        ),
+        (
+            "Location info",
+            {
+                "fields": ("facility", "floor", "space_zone"),
+            },
+        ),
+        (
+            "Controls",
+            {
+                "fields": (
+                    "switch_type",
+                    "controls",
+                    "ctrl_hours",
+                    "mount_type",
+                    "optic",
+                ),
+            },
+        ),
+        (
+            "Interior flags",
+            {
+                "fields": (
+                    "flag_integral_sensor",
+                    "flag_embb",
+                    "flag_air_return",
+                    "flag_wire_guard",
+                    "flag_volt_480",
+                    "flag_em_gen",
+                ),
+            },
+        ),
+        (
+            "Exterior flags",
+            {
+                "fields": (
+                    "flag_photocell",
+                    "flag_twistlock_pc",
+                    "flag_wet_location",
+                    "flag_dark_sky",
+                ),
+            },
+        ),
         ("Notes", {"fields": ("notes",)}),
     )
 
@@ -196,6 +262,13 @@ class ProductAccessoryAdmin(admin.ModelAdmin):
 
 @admin.register(SpecItem)
 class SpecItemAdmin(admin.ModelAdmin):
-    list_display = ("log_entry", "product", "category", "model_string", "qty", "wattage")
+    list_display = (
+        "log_entry",
+        "product",
+        "category",
+        "model_string",
+        "qty",
+        "wattage",
+    )
     list_filter = ("category",)
     search_fields = ("model_string", "product__sku", "log_entry__fixture_id")

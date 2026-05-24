@@ -1,33 +1,69 @@
+from attr.validators import max_len
+from django.conf import settings
+from msgpack.ext import Timestamp
+from psycopg import Time
+from django_extensions.db.models import TimeStampedModel
 from django.db import models
 
 
-class Building(models.Model):
-    PROJECT_TYPES = [
-        ("normal", "Normal"),
-        ("nycecc", "NYC ECC"),
-        ("ashrae", "ASHRAE 90.1"),
-    ]
+class ProjectType(models.TextChoices):
+    NORMAL = "normal", "Normal"
+    NYCECC = "nycecc", "NYC ECC"
+    ASHRAE = "ashrae", "ASHRAE 90.1"
 
-    BUILDING_TYPES = [
-        ("k12", "K-12"),
-        ("higher_ed", "Higher Ed"),
-        ("office", "Office"),
-        ("municipal", "Municipal"),
-        ("healthcare", "Healthcare"),
-        ("retail", "Retail"),
-        ("industrial", "Industrial"),
-        ("warehouse", "Warehouse"),
-        ("residential", "Residential"),
-        ("mixed_use", "Mixed Use"),
-        ("other", "Other"),
-    ]
 
+class BuildingType(models.TextChoices):
+    K12 = "k12", "K-12"
+    HIGHER_ED = "higher_ed", "Higher Ed"
+    OFFICE = "office", "Office"
+    MUNICIPAL = "municipal", "Municipal"
+    HEALTHCARE = "healthcare", "HealthCare"
+    RETAIL = "retail", "Retail"
+    INDUSTRIAL = "industrial", "Industrial"
+    WAREHOUSE = "warehouse", "Warehouse"
+    RESIDENTIAL = "residential", "Residential"
+    MIXED_USE = "mixed_use", "Mixed Use"
+    OTHER = "other", "Other"
+
+
+class ProjectStatus(models.TextChoices):
+    PENDING = "pending", "Pending"
+    IN_PROGRESS = "in_progress", "In Progress"
+    COMPLETE = "complete", "Complete"
+    ABANDONED = "abandoned", "Abandoned"
+
+
+class Project(TimeStampedModel):
+    name = models.CharField(max_length=150)
+    client = models.CharField(max_length=255, blank=True)
+    project_type = models.CharField(
+        max_length=20, choices=ProjectType.choices, default="normal"
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=ProjectStatus.choices,
+        default=ProjectStatus.PENDING.value,
+    )
+    owner = models.ForeignKey(
+        related_name="projects",
+        to=settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+    )
+
+
+class Building(TimeStampedModel):
+    project = models.ForeignKey(
+        to=Project,
+        on_delete=models.PROTECT,
+        related_name="buildings",
+    )
     name = models.CharField(max_length=255)
     address = models.CharField(max_length=500, blank=True)
-    client = models.CharField(max_length=255, blank=True)
     auditor = models.CharField(max_length=255, blank=True)
-    project_type = models.CharField(max_length=20, choices=PROJECT_TYPES, default="normal")
-    building_type = models.CharField(max_length=30, choices=BUILDING_TYPES, blank=True)
+    building_type = models.CharField(
+        max_length=30, choices=BuildingType.choices, blank=True
+    )
     square_feet = models.PositiveIntegerField(null=True, blank=True)
     year_built = models.PositiveIntegerField(null=True, blank=True)
     hvac_type = models.CharField(max_length=100, blank=True)
@@ -36,22 +72,65 @@ class Building(models.Model):
     egrid_subregion = models.CharField(max_length=50, blank=True)
     climate_zone = models.CharField(max_length=20, blank=True)
     savings_model = models.CharField(max_length=100, blank=True)
-    baseline_hours = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    baseline_hours = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True
+    )
     emergency_lighting_strategy = models.CharField(max_length=100, blank=True)
     room_type_hours_overrides = models.JSONField(default=dict, blank=True)
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.name
 
 
-class Floor(models.Model):
-    building = models.ForeignKey(Building, on_delete=models.CASCADE, related_name="floors")
+class AuditVersionStatus(models.TextChoices):
+    DRAFT = "draft", "Draft"
+    PUBLISHED = "published", "Published"
+    PUBLISHED_TO_IPAD = "published_to_ipad", "Published To Ipad"
+
+
+class AuditVersion(TimeStampedModel):
+    building = models.ForeignKey(
+        Building, related_name="audit_versions", on_delete=models.PROTECT
+    )
+    version_number = models.PositiveIntegerField(editable=False)
+    label = models.CharField(max_length=255, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True
+    )
+    status = models.CharField(
+        max_length=30,
+        choices=AuditVersionStatus.choices,
+        default=AuditVersionStatus.DRAFT.value,
+    )
+    source_payload = models.JSONField(default=dict, blank=True)
+    is_current = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["-version_number"]
+        unique_together = [("building", "version_number")]
+
+    def __str__(self):
+        return f"{self.building.name} v{self.version_number}"
+
+    def save(self, *args, **kwargs):
+        if self._state.adding and not self.version_number:
+            last = (
+                AuditVersion.objects.filter(building=self.building)
+                .order_by("-version_number")
+                .values_list("version_number", flat=True)
+                .first()
+            )
+            self.version_number = (last or 0) + 1
+        super().save(*args, **kwargs)
+
+class Floor(TimeStampedModel):
+    building = models.ForeignKey(
+        Building, on_delete=models.CASCADE, related_name="floors"
+    )
     name = models.CharField(max_length=100)
     level = models.IntegerField(null=True, blank=True)
     sort_order = models.PositiveIntegerField(default=0)
+    audit_version = models.ForeignKey(AuditVersion, on_delete=models.SET_NULL, null=True)
 
     class Meta:
         ordering = ["sort_order", "level"]
@@ -60,8 +139,10 @@ class Floor(models.Model):
         return f"{self.building.name} / {self.name}"
 
 
-class FloorPlan(models.Model):
-    floor = models.OneToOneField(Floor, on_delete=models.CASCADE, related_name="floor_plan")
+class FloorPlan(TimeStampedModel):
+    floor = models.OneToOneField(
+        Floor, on_delete=models.CASCADE, related_name="floor_plan"
+    )
     pdf = models.FileField(upload_to="floor_plans/", null=True, blank=True)
     image = models.ImageField(upload_to="floor_plans/", null=True, blank=True)
     width = models.PositiveIntegerField(null=True, blank=True)
@@ -71,7 +152,7 @@ class FloorPlan(models.Model):
         return f"FloorPlan {self.floor}"
 
 
-class FloorPlanPin(models.Model):
+class FloorPlanPin(TimeStampedModel):
     floor_plan = models.ForeignKey(
         FloorPlan,
         on_delete=models.CASCADE,
@@ -93,20 +174,22 @@ class FloorPlanPin(models.Model):
         return self.label or f"Pin {self.pk}"
 
 
-class LightLevelReading(models.Model):
+class LightLevelReading(TimeStampedModel):
     MEASURED_AT = [
         ("floor", "Floor"),
         ("30aff", '30" AFF'),
         ("surface", "Surface"),
     ]
-    floor_plan = models.ForeignKey(FloorPlan, on_delete=models.CASCADE, related_name="light_levels")
+    floor_plan = models.ForeignKey(
+        FloorPlan, on_delete=models.CASCADE, related_name="light_levels"
+    )
     x = models.FloatField()
     y = models.FloatField()
     footcandles = models.DecimalField(max_digits=8, decimal_places=2)
     measured_at = models.CharField(max_length=20, choices=MEASURED_AT, default="floor")
 
 
-class Room(models.Model):
+class Room(TimeStampedModel):
     floor = models.ForeignKey(Floor, on_delete=models.CASCADE, related_name="rooms")
     name = models.CharField(max_length=255)
     room_type = models.CharField(max_length=100, blank=True)
@@ -116,7 +199,9 @@ class Room(models.Model):
     square_feet = models.PositiveIntegerField(null=True, blank=True)
     mount_height = models.CharField(max_length=50, blank=True)
     ceiling_type = models.CharField(max_length=100, blank=True)
-    hours_override = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    hours_override = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True
+    )
 
     # wiring flags
     wiring_three_way = models.BooleanField(default=False)
@@ -124,72 +209,72 @@ class Room(models.Model):
     wiring_no_neutral = models.BooleanField(default=False)
 
     notes = models.TextField(blank=True)
+    audit_version = models.ForeignKey(AuditVersion, on_delete=models.SET_NULL, null=True)
 
     def __str__(self):
         return f"{self.floor} / {self.name}"
 
 
-class RoomPhoto(models.Model):
+class RoomPhoto(TimeStampedModel):
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="photos")
     file = models.FileField(upload_to="room_photos/")
     caption = models.CharField(max_length=255, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
 
 
-class RoomNote(models.Model):
+class RoomNote(TimeStampedModel):
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="room_notes")
     text = models.TextField(blank=True)
     voice_memo = models.FileField(upload_to="voice_memos/", null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
 
 
-class LogEntry(models.Model):
-    SWITCH_TYPES = [
-        ("toggle", "Toggle"),
-        ("wireless", "Wireless Switch"),
-        ("keyed", "Keyed Switch"),
-        ("rocker", "Rocker"),
-        ("scene", "Scene Selector/Keypad"),
-        ("dimmer", "Dimmer"),
-        ("sensor_switch", "Sensor Switch"),
-        ("low_voltage", "Low Voltage"),
-        ("none", "None"),
-    ]
+class SwitchType(models.TextChoices):
+    TOGGLE = "toggle", "Toggle"
+    WIRELESS = "wireless", "Wireless Switch"
+    KEYED = "keyed", "Keyed Switch"
+    ROCKER = "rocker", "Rocker"
+    SCENE = "scene", "Scene Selector/Keypad"
+    DIMMER = "dimmer", "Dimmer"
+    SENSOR_SWITCH = "sensor_switch", "Sensor Switch"
+    LOW_VOLTAGE = "low_voltage", "Low Voltage"
+    NONE = "none", "None"
 
-    MOUNT_TYPES = [
-        # interior
-        ("surface", "Surface"),
-        ("wall", "Wall"),
-        ("pendant", "Pendant"),
-        ("threaded_rod", "Threaded Rod"),
-        ("chain", "Chain"),
-        ("aircraft_cable", "Aircraft Cable"),
-        ("kindorf", "Kindorf"),
-        ("recessed", "Recessed"),
-        # exterior
-        ("knuckle", "Knuckle"),
-        ("trunnion", "Trunnion"),
-        ("bracket", "Bracket"),
-        ("slipfitter", "Slipfitter"),
-        ("tenon", "Tenon"),
-        ("wall_mount", "Wall-Mount"),
-        ("pole_mount", "Pole-Mount"),
-    ]
 
-    OPTIC_TYPES = [
-        ("type_ii", "Type II"),
-        ("type_iii", "Type III"),
-        ("type_iv", "Type IV"),
-        ("type_v", "Type V"),
-    ]
+class MountType(models.TextChoices):
+    SURFACE = "surface", "Surface"
+    WALL = "wall", "Wall"
+    PENDANT = "pendant", "Pendant"
+    THREADED_ROD = "threaded_rod", "Threaded Rod"
+    CHAIN = "chain", "Chain"
+    AIRCRAFT_CABLE = "aircraft_cable", "Aircraft Cable"
+    KINDORF = "kindorf", "Kindorf"
+    RECESSED = "recessed", "Recessed"
+    # exterior
+    KNUCKLE = "knuckle", "Knuckle"
+    TRUNNION = "trunnion", "Trunnion"
+    BRACKET = "bracket", "Bracket"
+    SLIP_FITTER = "slipfitter", "Slipfitter"
+    TENNON = "tenon", "Tenon"
+    WALL_MOUNT = "wall_mount", "Wall-Mount"
+    POLE_MOUNT = "pole_mount", "Pole-Mount"
 
-    LOCATION = [
-        ("interior", "Interior"),
-        ("exterior", "Exterior"),
-    ]
 
+class OpticType(models.TextChoices):
+    TYPE_II = "type_ii", "Type II"
+    TYPE_III = "type_iii", "Type III"
+    TYPE_IV = "type_iv", "Type IV"
+    TYPE_V = "type_v", "Type V"
+
+
+class Location(models.TextChoices):
+    INTERIOR = "interior", "Interior"
+    EXTERIOR = "exterior", "Exterior"
+
+
+class LogEntry(TimeStampedModel):
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="log_entries")
-    location = models.CharField(max_length=20, choices=LOCATION, default="interior")
+    location = models.CharField(
+        max_length=20, choices=Location.choices, default="interior"
+    )
 
     facility = models.CharField(max_length=255, blank=True)
     floor = models.CharField(max_length=100, blank=True)
@@ -200,10 +285,12 @@ class LogEntry(models.Model):
     wattage = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
     mount_height = models.CharField(max_length=50, blank=True)
 
-    switch_type = models.CharField(max_length=30, choices=SWITCH_TYPES, blank=True)
+    switch_type = models.CharField(
+        max_length=30, choices=SwitchType.choices, blank=True
+    )
     controls = models.CharField(max_length=255, blank=True)
-    mount_type = models.CharField(max_length=30, choices=MOUNT_TYPES, blank=True)
-    optic = models.CharField(max_length=20, choices=OPTIC_TYPES, blank=True)
+    mount_type = models.CharField(max_length=30, choices=MountType.choices, blank=True)
+    optic = models.CharField(max_length=20, choices=OpticType.choices, blank=True)
 
     # interior flags
     flag_integral_sensor = models.BooleanField(default=False)
@@ -219,11 +306,12 @@ class LogEntry(models.Model):
     flag_wet_location = models.BooleanField(default=False)
     flag_dark_sky = models.BooleanField(default=False)
 
-    ctrl_hours = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    ctrl_hours = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True
+    )
     notes = models.TextField(blank=True)
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    audit_version = models.ForeignKey(AuditVersion, on_delete=models.SET_NULL, null=True)
 
     class Meta:
         verbose_name_plural = "Log entries"
@@ -232,7 +320,7 @@ class LogEntry(models.Model):
         return f"{self.fixture_id or 'entry'} x{self.qty}"
 
 
-class CatalogProduct(models.Model):
+class CatalogProduct(TimeStampedModel):
     sku = models.CharField(max_length=100, unique=True)
     name = models.CharField(max_length=255)
     family = models.CharField(max_length=100, blank=True)
@@ -249,7 +337,7 @@ class CatalogProduct(models.Model):
         return self.sku
 
 
-class CatalogModifier(models.Model):
+class CatalogModifier(TimeStampedModel):
     family = models.CharField(max_length=100)
     suffix_code = models.CharField(max_length=20)
     description = models.CharField(max_length=255, blank=True)
@@ -263,18 +351,21 @@ class CatalogModifier(models.Model):
         return f"{self.family}{self.suffix_code}"
 
 
-class ProductAccessory(models.Model):
-    ACCESSORY_TYPES = [
-        ("goof_ring", "Goof Ring"),
-        ("trim", "Trim"),
-        ("mounting_plate", "Mounting Plate"),
-        ("socket_kit", "Socket Kit"),
-        ("other", "Other"),
-    ]
+class AccessoryType(models.TextChoices):
+    GOOF_RING = "goof_ring", "Goof Ring"
+    TRIM = "trim", "Trim"
+    MOUNTING_PLATE = "mounting_plate", "Mounting Plate"
+    SOCKET_KIT = "socket_kit", "Socket Kit"
+    OTHER = "other", "Other"
+
+
+class ProductAccessory(TimeStampedModel):
     base_family = models.CharField(max_length=100)
     sku = models.CharField(max_length=100)
     name = models.CharField(max_length=255)
-    accessory_type = models.CharField(max_length=30, choices=ACCESSORY_TYPES, blank=True)
+    accessory_type = models.CharField(
+        max_length=30, choices=AccessoryType.choices, blank=True
+    )
     image_url = models.URLField(blank=True)
     spec_sheet_url = models.URLField(blank=True)
 
@@ -285,18 +376,24 @@ class ProductAccessory(models.Model):
         return f"{self.sku} ({self.accessory_type})"
 
 
-class SpecItem(models.Model):
-    REPLACEMENT_CATEGORIES = [
-        ("relamp", "Re-lamp"),
-        ("kit", "Kit"),
-        ("new_fixture", "New Fixture"),
-        ("custom", "Custom"),
-        ("switch", "Switch/Control"),
-    ]
+class ReplacementCategories(models.TextChoices):
+    RELAMP = "relamp", "Re-lamp"
+    KIT = "kit", "Kit"
+    NEW_FIXTURE = "new_fixture", "New Fixture"
+    CUSTOM = "custom", "Custom"
+    SWITCH = "switch", "Switch/Control"
 
-    log_entry = models.ForeignKey(LogEntry, on_delete=models.CASCADE, related_name="spec_items")
-    product = models.ForeignKey(CatalogProduct, on_delete=models.PROTECT, null=True, blank=True)
-    category = models.CharField(max_length=20, choices=REPLACEMENT_CATEGORIES, blank=True)
+
+class SpecItem(TimeStampedModel):
+    log_entry = models.ForeignKey(
+        LogEntry, on_delete=models.CASCADE, related_name="spec_items"
+    )
+    product = models.ForeignKey(
+        CatalogProduct, on_delete=models.PROTECT, null=True, blank=True
+    )
+    category = models.CharField(
+        max_length=20, choices=ReplacementCategories.choices, blank=True
+    )
     model_string = models.CharField(max_length=255, blank=True)
     qty = models.PositiveIntegerField(default=1)
     wattage = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
@@ -309,4 +406,8 @@ class SpecItem(models.Model):
         ordering = ["sort_order"]
 
     def __str__(self):
-        return self.model_string or (self.product.sku if self.product else f"spec {self.pk}")
+        return self.model_string or (
+            self.product.sku if self.product else f"spec {self.pk}"
+        )
+
+
