@@ -95,6 +95,20 @@ class AuditVersionAdmin(admin.ModelAdmin):
     search_fields = ("building__name", "label")
     readonly_fields = ("version_number",)
 
+    def get_readonly_fields(self, request, obj=None):
+        readonly = list(super().get_readonly_fields(request, obj))
+        if obj and obj.status == "published":
+            readonly.extend([
+                "building", "label", "status",
+                "source_payload", "is_current", "created_by",
+            ])
+        return readonly
+
+    def has_delete_permission(self, request, obj=None):
+        if obj and obj.status == "published":
+            return False
+        return super().has_delete_permission(request, obj)
+
 
 @admin.register(Building)
 class BuildingAdmin(admin.ModelAdmin):

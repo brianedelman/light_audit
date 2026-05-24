@@ -1,9 +1,7 @@
-from attr.validators import max_len
 from django.conf import settings
-from msgpack.ext import Timestamp
-from psycopg import Time
-from django_extensions.db.models import TimeStampedModel
+from django.core.exceptions import ValidationError
 from django.db import models
+from django_extensions.db.models import TimeStampedModel
 
 
 class ProjectType(models.TextChoices):
@@ -112,6 +110,17 @@ class AuditVersion(TimeStampedModel):
     def __str__(self):
         return f"{self.building.name} v{self.version_number}"
 
+    def clean(self):
+        if not self._state.adding and self.pk:
+            existing = (
+                AuditVersion.objects.filter(pk=self.pk)
+                .values_list("status", flat=True)
+                .first()
+            )
+            if existing == AuditVersionStatus.PUBLISHED:
+                msg = "Published audit versions cannot be modified."
+                raise ValidationError(msg)
+
     def save(self, *args, **kwargs):
         if self._state.adding and not self.version_number:
             last = (
@@ -137,6 +146,18 @@ class Floor(TimeStampedModel):
 
     def __str__(self):
         return f"{self.building.name} / {self.name}"
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding and self.audit_version_id:
+            status = (
+                AuditVersion.objects.filter(pk=self.audit_version_id)
+                .values_list("status", flat=True)
+                .first()
+            )
+            if status == AuditVersionStatus.PUBLISHED:
+                msg = "Cannot modify floor linked to a published audit version."
+                raise ValidationError(msg)
+        super().save(*args, **kwargs)
 
 
 class FloorPlan(TimeStampedModel):
@@ -213,6 +234,18 @@ class Room(TimeStampedModel):
 
     def __str__(self):
         return f"{self.floor} / {self.name}"
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding and self.audit_version_id:
+            status = (
+                AuditVersion.objects.filter(pk=self.audit_version_id)
+                .values_list("status", flat=True)
+                .first()
+            )
+            if status == AuditVersionStatus.PUBLISHED:
+                msg = "Cannot modify room linked to a published audit version."
+                raise ValidationError(msg)
+        super().save(*args, **kwargs)
 
 
 class RoomPhoto(TimeStampedModel):
@@ -318,6 +351,18 @@ class LogEntry(TimeStampedModel):
 
     def __str__(self):
         return f"{self.fixture_id or 'entry'} x{self.qty}"
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding and self.audit_version_id:
+            status = (
+                AuditVersion.objects.filter(pk=self.audit_version_id)
+                .values_list("status", flat=True)
+                .first()
+            )
+            if status == AuditVersionStatus.PUBLISHED:
+                msg = "Cannot modify log entry linked to a published audit version."
+                raise ValidationError(msg)
+        super().save(*args, **kwargs)
 
 
 class CatalogProduct(TimeStampedModel):

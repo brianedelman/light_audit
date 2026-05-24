@@ -1,11 +1,15 @@
 import pytest
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.db.models import ProtectedError
 
 from light_audit.audit.models import AuditVersion
 from light_audit.audit.models import Building
+from light_audit.audit.models import Floor
+from light_audit.audit.models import LogEntry
 from light_audit.audit.models import Project
+from light_audit.audit.models import Room
 
 User = get_user_model()
 
@@ -72,3 +76,101 @@ class TestAuditVersionAutoIncrement:
         v.save()
         v.refresh_from_db()
         assert v.version_number == 1
+
+
+@pytest.fixture
+def published_version(db, building, user):
+    v = AuditVersion.objects.create(
+        building=building, created_by=user, status="published",
+    )
+    return v
+
+
+@pytest.fixture
+def draft_version(db, building, user):
+    v = AuditVersion.objects.create(building=building, created_by=user, status="draft")
+    return v
+
+
+@pytest.mark.django_db
+class TestPublishedVersionImmutability:
+    def test_published_version_clean_raises(self, published_version):
+        published_version.label = "Changed"
+        with pytest.raises(
+            ValidationError, match="Published audit versions cannot be modified",
+        ):
+            published_version.clean()
+
+    def test_draft_version_clean_allows(self, draft_version):
+        draft_version.label = "Changed"
+        draft_version.clean()  # should not raise
+
+    def test_floor_save_rejects_when_published(self, building, published_version):
+        floor = Floor.objects.create(
+            building=building, name="Floor 1", audit_version=published_version
+        )
+        floor.name = "Renamed"
+        with pytest.raises(ValidationError, match="Cannot modify floor"):
+            floor.save()
+
+    def test_floor_save_allows_when_draft(self, building, draft_version):
+        floor = Floor.objects.create(
+            building=building, name="Floor 1", audit_version=draft_version
+        )
+        floor.name = "Renamed"
+        floor.save()  # should not raise
+        floor.refresh_from_db()
+        assert floor.name == "Renamed"
+
+    def test_room_save_rejects_when_published(self, building, published_version):
+        floor = Floor.objects.create(
+            building=building, name="Floor 1", audit_version=published_version
+        )
+        room = Room.objects.create(
+            floor=floor, name="Room 1", audit_version=published_version
+        )
+        room.name = "Renamed"
+        with pytest.raises(ValidationError, match="Cannot modify room"):
+            room.save()
+
+    def test_room_save_allows_when_draft(self, building, draft_version):
+        floor = Floor.objects.create(
+            building=building, name="Floor 1", audit_version=draft_version
+        )
+        room = Room.objects.create(
+            floor=floor, name="Room 1", audit_version=draft_version
+        )
+        room.name = "Renamed"
+        room.save()  # should not raise
+
+    def test_log_entry_save_rejects_when_published(self, building, published_version):
+        floor = Floor.objects.create(
+            building=building, name="Floor 1", audit_version=published_version
+        )
+        room = Room.objects.create(
+            floor=floor, name="Room 1", audit_version=published_version
+        )
+        entry = LogEntry.objects.create(
+            room=room, fixture_id="E1", audit_version=published_version
+        )
+        entry.notes = "Updated"
+        with pytest.raises(ValidationError, match="Cannot modify log entry"):
+            entry.save()
+
+    def test_log_entry_save_allows_when_draft(self, building, draft_version):
+        floor = Floor.objects.create(
+            building=building, name="Floor 1", audit_version=draft_version
+        )
+        room = Room.objects.create(
+            floor=floor, name="Room 1", audit_version=draft_version
+        )
+        entry = LogEntry.objects.create(
+            room=room, fixture_id="E1", audit_version=draft_version
+        )
+        entry.notes = "Updated"
+        entry.save()  # should not raise
+
+    def test_floor_without_version_allows_save(self, building):
+        floor = Floor.objects.create(building=building, name="Floor 1")
+        floor.name = "Renamed"
+        floor.save()  # no audit_version, should not raise
