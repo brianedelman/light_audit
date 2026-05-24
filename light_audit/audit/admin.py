@@ -10,6 +10,7 @@ from .models import FloorPlanPin
 from .models import KnowledgeDoc
 from .models import LightLevelReading
 from .models import LogEntry
+from .models import Photo
 from .models import ProductAccessory
 from .models import Project
 from .models import Room
@@ -273,6 +274,13 @@ class ProductAccessoryAdmin(admin.ModelAdmin):
     list_display = ("sku", "name", "base_family", "accessory_type")
     list_filter = ("accessory_type", "base_family")
     search_fields = ("sku", "name", "base_family")
+
+
+@admin.register(Photo)
+class PhotoAdmin(admin.ModelAdmin):
+    list_display = ("building", "photo_type", "room", "floor", "user", "uploaded_at")
+    list_filter = ("photo_type", "building")
+    search_fields = ("building__name", "room__name", "space_name", "notes")
 
 
 @admin.register(KnowledgeDoc)

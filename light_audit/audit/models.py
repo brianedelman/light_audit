@@ -457,6 +457,60 @@ class SpecItem(TimeStampedModel):
         )
 
 
+class PhotoType(models.TextChoices):
+    FIXTURE = "fixture", "Fixture"
+    SWITCH = "switch", "Switch"
+    CONTROLS = "controls", "Controls"
+    PANORAMA = "panorama", "Panorama"
+    VIDEO = "video", "Video"
+
+
+class Photo(TimeStampedModel):
+    building = models.ForeignKey(
+        Building, on_delete=models.CASCADE, related_name="photos"
+    )
+    floor = models.ForeignKey(
+        Floor, on_delete=models.SET_NULL, null=True, blank=True, related_name="photos"
+    )
+    room = models.ForeignKey(
+        Room, on_delete=models.SET_NULL, null=True, blank=True, related_name="media"
+    )
+    space_name = models.CharField(max_length=255, blank=True)
+    photo_type = models.CharField(
+        max_length=20, choices=PhotoType.choices, default=PhotoType.FIXTURE
+    )
+    storage_path = models.CharField(max_length=500, blank=True)
+    public_url = models.URLField(blank=True)
+    thumbnail_url = models.URLField(blank=True)
+    file_size_bytes = models.PositiveBigIntegerField(null=True, blank=True)
+    mime_type = models.CharField(max_length=100, blank=True)
+    width = models.PositiveIntegerField(null=True, blank=True)
+    height = models.PositiveIntegerField(null=True, blank=True)
+    duration_seconds = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True
+    )
+    taken_at = models.DateTimeField(null=True, blank=True)
+    uploaded_at = models.DateTimeField(null=True, blank=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="photos",
+    )
+    log_entry = models.ForeignKey(
+        LogEntry,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="photos",
+    )
+    notes = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"{self.photo_type} - {self.building.name}"
+
+
 class KnowledgeDoc(TimeStampedModel):
     title = models.CharField(max_length=255)
     source_path = models.CharField(max_length=500, blank=True)

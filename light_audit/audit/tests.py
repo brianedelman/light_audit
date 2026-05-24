@@ -9,6 +9,7 @@ from light_audit.audit.models import Building
 from light_audit.audit.models import Floor
 from light_audit.audit.models import KnowledgeDoc
 from light_audit.audit.models import LogEntry
+from light_audit.audit.models import Photo
 from light_audit.audit.models import Project
 from light_audit.audit.models import Room
 
@@ -108,7 +109,7 @@ class TestPublishedVersionImmutability:
 
     def test_floor_save_rejects_when_published(self, building, published_version):
         floor = Floor.objects.create(
-            building=building, name="Floor 1", audit_version=published_version
+            building=building, name="Floor 1", audit_version=published_version,
         )
         floor.name = "Renamed"
         with pytest.raises(ValidationError, match="Cannot modify floor"):
@@ -116,7 +117,7 @@ class TestPublishedVersionImmutability:
 
     def test_floor_save_allows_when_draft(self, building, draft_version):
         floor = Floor.objects.create(
-            building=building, name="Floor 1", audit_version=draft_version
+            building=building, name="Floor 1", audit_version=draft_version,
         )
         floor.name = "Renamed"
         floor.save()  # should not raise
@@ -125,10 +126,10 @@ class TestPublishedVersionImmutability:
 
     def test_room_save_rejects_when_published(self, building, published_version):
         floor = Floor.objects.create(
-            building=building, name="Floor 1", audit_version=published_version
+            building=building, name="Floor 1", audit_version=published_version,
         )
         room = Room.objects.create(
-            floor=floor, name="Room 1", audit_version=published_version
+            floor=floor, name="Room 1", audit_version=published_version,
         )
         room.name = "Renamed"
         with pytest.raises(ValidationError, match="Cannot modify room"):
@@ -136,23 +137,23 @@ class TestPublishedVersionImmutability:
 
     def test_room_save_allows_when_draft(self, building, draft_version):
         floor = Floor.objects.create(
-            building=building, name="Floor 1", audit_version=draft_version
+            building=building, name="Floor 1", audit_version=draft_version,
         )
         room = Room.objects.create(
-            floor=floor, name="Room 1", audit_version=draft_version
+            floor=floor, name="Room 1", audit_version=draft_version,
         )
         room.name = "Renamed"
         room.save()  # should not raise
 
     def test_log_entry_save_rejects_when_published(self, building, published_version):
         floor = Floor.objects.create(
-            building=building, name="Floor 1", audit_version=published_version
+            building=building, name="Floor 1", audit_version=published_version,
         )
         room = Room.objects.create(
-            floor=floor, name="Room 1", audit_version=published_version
+            floor=floor, name="Room 1", audit_version=published_version,
         )
         entry = LogEntry.objects.create(
-            room=room, fixture_id="E1", audit_version=published_version
+            room=room, fixture_id="E1", audit_version=published_version,
         )
         entry.notes = "Updated"
         with pytest.raises(ValidationError, match="Cannot modify log entry"):
@@ -160,13 +161,13 @@ class TestPublishedVersionImmutability:
 
     def test_log_entry_save_allows_when_draft(self, building, draft_version):
         floor = Floor.objects.create(
-            building=building, name="Floor 1", audit_version=draft_version
+            building=building, name="Floor 1", audit_version=draft_version,
         )
         room = Room.objects.create(
-            floor=floor, name="Room 1", audit_version=draft_version
+            floor=floor, name="Room 1", audit_version=draft_version,
         )
         entry = LogEntry.objects.create(
-            room=room, fixture_id="E1", audit_version=draft_version
+            room=room, fixture_id="E1", audit_version=draft_version,
         )
         entry.notes = "Updated"
         entry.save()  # should not raise
@@ -212,3 +213,96 @@ class TestKnowledgeDoc:
         retrieved = KnowledgeDoc.objects.get(pk=doc.pk)
         assert retrieved.title == "Retrieve Test"
         assert retrieved.chunk_text == "Retrievable text."
+
+
+@pytest.mark.django_db
+class TestPhoto:
+    def test_create_photo_minimal(self, building):
+        photo = Photo.objects.create(
+            building=building,
+            photo_type="fixture",
+        )
+        assert photo.pk is not None
+        assert photo.building == building
+        assert photo.photo_type == "fixture"
+        assert photo.floor is None
+        assert photo.room is None
+        assert photo.log_entry is None
+        assert str(photo) == f"fixture - {building.name}"
+
+    def test_photo_with_all_fks(self, building, user, draft_version):
+        floor = Floor.objects.create(
+            building=building, name="Floor 1", audit_version=draft_version,
+        )
+        room = Room.objects.create(
+            floor=floor, name="Room 1", audit_version=draft_version,
+        )
+        entry = LogEntry.objects.create(
+            room=room, fixture_id="E1", audit_version=draft_version,
+        )
+        photo = Photo.objects.create(
+            building=building,
+            floor=floor,
+            room=room,
+            log_entry=entry,
+            user=user,
+            photo_type="switch",
+            space_name="Lobby",
+            storage_path="photos/test.jpg",
+            public_url="https://example.com/test.jpg",
+            file_size_bytes=1024000,
+            mime_type="image/jpeg",
+            width=1920,
+            height=1080,
+            notes="Test photo",
+        )
+        assert photo.building == building
+        assert photo.floor == floor
+        assert photo.room == room
+        assert photo.log_entry == entry
+        assert photo.user == user
+        assert photo.space_name == "Lobby"
+
+    def test_photo_fk_cascade_on_building_delete(self, project):
+        b = Building.objects.create(name="Temp Building", project=project)
+        Photo.objects.create(building=b, photo_type="panorama")
+        bid = b.pk
+        assert Photo.objects.filter(building_id=bid).count() == 1
+        b.delete()
+        assert Photo.objects.filter(building_id=bid).count() == 0
+
+    def test_photo_set_null_on_room_delete(self, building, draft_version):
+        floor = Floor.objects.create(
+            building=building, name="Floor 1", audit_version=draft_version,
+        )
+        room = Room.objects.create(
+            floor=floor, name="Room 1", audit_version=draft_version,
+        )
+        photo = Photo.objects.create(
+            building=building, room=room, photo_type="controls",
+        )
+        room.delete()
+        photo.refresh_from_db()
+        assert photo.room is None
+
+    def test_photo_set_null_on_log_entry_delete(self, building, draft_version):
+        floor = Floor.objects.create(
+            building=building, name="Floor 1", audit_version=draft_version,
+        )
+        room = Room.objects.create(
+            floor=floor, name="Room 1", audit_version=draft_version,
+        )
+        entry = LogEntry.objects.create(
+            room=room, fixture_id="E1", audit_version=draft_version,
+        )
+        photo = Photo.objects.create(
+            building=building, log_entry=entry, photo_type="fixture",
+        )
+        entry.delete()
+        photo.refresh_from_db()
+        assert photo.log_entry is None
+
+    def test_photo_type_choices(self, building):
+        for ptype in ["fixture", "switch", "controls", "panorama", "video"]:
+            photo = Photo.objects.create(building=building, photo_type=ptype)
+            assert photo.photo_type == ptype
