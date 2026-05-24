@@ -98,16 +98,10 @@ STORAGES = {
         },
     },
     "staticfiles": {
-        "BACKEND": "storages.backends.s3.S3Storage",
-        "OPTIONS": {
-            "location": "static",
-            "default_acl": "public-read",
-        },
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
 MEDIA_URL = f"https://{aws_s3_domain}/media/"
-COLLECTFASTA_STRATEGY = "collectfasta.strategies.boto3.Boto3Strategy"
-STATIC_URL = f"https://{aws_s3_domain}/static/"
 
 # EMAIL
 # ------------------------------------------------------------------------------
@@ -143,11 +137,6 @@ ANYMAIL = {
     "MAILGUN_SENDER_DOMAIN": env("MAILGUN_DOMAIN"),
     "MAILGUN_API_URL": env("MAILGUN_API_URL", default="https://api.mailgun.net/v3"),
 }
-
-# Collectfasta
-# ------------------------------------------------------------------------------
-# https://github.com/jasongi/collectfasta#installation
-INSTALLED_APPS = ["collectfasta", *INSTALLED_APPS]
 
 # LOGGING
 # ------------------------------------------------------------------------------

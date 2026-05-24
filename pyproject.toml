@@ -4,9 +4,7 @@ version = "0.1.0"
 description = "Light Audit Platform"
 readme = "README.md"
 license = { text = "Not open source" }
-authors = [
-  { name = "Brian Edelman", email = "bd.edelman@gmail.com" },
-]
+authors = [{ name = "Brian Edelman", email = "bd.edelman@gmail.com" }]
 requires-python = "==3.14.*"
 classifiers = [
   "Programming Language :: Python :: 3 :: Only",
@@ -15,7 +13,6 @@ classifiers = [
 dependencies = [
   "argon2-cffi==25.1.0",
   "celery==5.6.3",
-  "collectfasta==3.3.3",
   "crispy-bootstrap5==2026.3",
   "django==6.0.5",
   "django-allauth[mfa]==65.17.0",
@@ -37,6 +34,7 @@ dependencies = [
   "redis==7.4.0",
   "uvicorn-worker==0.4.0",
   "uvicorn[standard]==0.47.0",
+  "whitenoise==6.12.0",
 ]
 
 [dependency-groups]
@@ -64,10 +62,7 @@ dev = [
 
 [tool.ruff]
 # Exclude a variety of commonly ignored directories.
-extend-exclude = [
-  "*/migrations/*.py",
-  "staticfiles/*",
-]
+extend-exclude = ["*/migrations/*.py", "staticfiles/*"]
 
 lint.select = [
   "A",
@@ -137,17 +132,14 @@ keep_full_version = true
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "--ds=config.settings.test --reuse-db --import-mode=importlib"
-python_files = [
-  "tests.py",
-  "test_*.py",
-]
+python_files = ["tests.py", "test_*.py"]
 
 # ==== Coverage ====
 
 [tool.coverage.run]
-include = [ "light_audit/**" ]
-omit = [ "*/migrations/*", "*/tests/*" ]
-plugins = [ "django_coverage_plugin" ]
+include = ["light_audit/**"]
+omit = ["*/migrations/*", "*/tests/*"]
+plugins = ["django_coverage_plugin"]
 
 # ==== mypy ====
 
@@ -158,9 +150,7 @@ ignore_missing_imports = true
 warn_unused_ignores = true
 warn_redundant_casts = true
 warn_unused_configs = true
-plugins = [
-  "mypy_django_plugin.main",
-]
+plugins = ["mypy_django_plugin.main"]
 
 [[tool.mypy.overrides]]
 # Django migrations should not produce any errors:
