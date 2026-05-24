@@ -143,6 +143,10 @@ plugins = ["django_coverage_plugin"]
 
 # ==== mypy ====
 
+[tool.ty.environment]
+python = ".venv"
+
+
 [tool.mypy]
 python_version = "3.14"
 check_untyped_defs = true

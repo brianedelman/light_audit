@@ -21,7 +21,7 @@ services:
       - ./.envs/.local/.django
       - ./.envs/.local/.postgres
     ports:
-      - '8000:8000'
+      - '8001:8000'
     command: /start
 
   postgres:
@@ -35,6 +35,8 @@ services:
       - light_audit_local_postgres_data_backups:/backups
     env_file:
       - ./.envs/.local/.postgres
+    ports:
+      - '5433:5432'
 
   mailpit:
     image: docker.io/axllent/mailpit:latest
@@ -47,6 +49,8 @@ services:
     container_name: light_audit_local_redis
     volumes:
       - light_audit_local_redis_data:/data
+    ports:
+      - '6379:6379'
 
   celeryworker:
     <<: *django
