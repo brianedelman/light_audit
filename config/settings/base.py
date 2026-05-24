@@ -61,6 +61,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 # APPS
 # ------------------------------------------------------------------------------
 DJANGO_APPS = [
+    "daphne",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -80,6 +81,7 @@ THIRD_PARTY_APPS = [
     "allauth.socialaccount",
     "django_celery_beat",
     "corsheaders",
+    "channels",
 ]
 
 LOCAL_APPS = [
@@ -324,6 +326,18 @@ SOCIALACCOUNT_ADAPTER = "light_audit.users.adapters.SocialAccountAdapter"
 # https://docs.allauth.org/en/latest/socialaccount/configuration.html
 SOCIALACCOUNT_FORMS = {"signup": "light_audit.users.forms.UserSocialSignupForm"}
 
+
+# CHANNELS
+# ------------------------------------------------------------------------------
+ASGI_APPLICATION = "config.asgi.application"
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [REDIS_URL],
+        },
+    },
+}
 
 # Your stuff...
 # ------------------------------------------------------------------------------
