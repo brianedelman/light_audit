@@ -2,6 +2,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django_extensions.db.models import TimeStampedModel
+from pgvector.django import VectorField
 
 
 class ProjectType(models.TextChoices):
@@ -454,5 +455,15 @@ class SpecItem(TimeStampedModel):
         return self.model_string or (
             self.product.sku if self.product else f"spec {self.pk}"
         )
+
+
+class KnowledgeDoc(TimeStampedModel):
+    title = models.CharField(max_length=255)
+    source_path = models.CharField(max_length=500, blank=True)
+    chunk_text = models.TextField()
+    embedding = VectorField(dimensions=1536, null=True, blank=True)
+
+    def __str__(self):
+        return self.title
 
 

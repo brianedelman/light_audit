@@ -7,6 +7,7 @@ from django.db.models import ProtectedError
 from light_audit.audit.models import AuditVersion
 from light_audit.audit.models import Building
 from light_audit.audit.models import Floor
+from light_audit.audit.models import KnowledgeDoc
 from light_audit.audit.models import LogEntry
 from light_audit.audit.models import Project
 from light_audit.audit.models import Room
@@ -174,3 +175,40 @@ class TestPublishedVersionImmutability:
         floor = Floor.objects.create(building=building, name="Floor 1")
         floor.name = "Renamed"
         floor.save()  # no audit_version, should not raise
+
+
+@pytest.mark.django_db
+class TestKnowledgeDoc:
+    def test_create_knowledge_doc(self):
+        doc = KnowledgeDoc.objects.create(
+            title="Test Document",
+            source_path="/docs/test.pdf",
+            chunk_text="This is a test chunk of text.",
+        )
+        assert doc.pk is not None
+        assert doc.title == "Test Document"
+        assert doc.source_path == "/docs/test.pdf"
+        assert doc.chunk_text == "This is a test chunk of text."
+        assert doc.embedding is None
+        assert str(doc) == "Test Document"
+
+    def test_create_knowledge_doc_with_embedding(self):
+        embedding = [0.1] * 1536
+        doc = KnowledgeDoc.objects.create(
+            title="Embedded Doc",
+            chunk_text="Text with embedding.",
+            embedding=embedding,
+        )
+        retrieved = KnowledgeDoc.objects.get(pk=doc.pk)
+        assert retrieved.embedding is not None
+        assert len(retrieved.embedding) == 1536  # noqa: PLR2004
+
+    def test_retrieve_knowledge_doc(self):
+        doc = KnowledgeDoc.objects.create(
+            title="Retrieve Test",
+            source_path="/docs/retrieve.pdf",
+            chunk_text="Retrievable text.",
+        )
+        retrieved = KnowledgeDoc.objects.get(pk=doc.pk)
+        assert retrieved.title == "Retrieve Test"
+        assert retrieved.chunk_text == "Retrievable text."

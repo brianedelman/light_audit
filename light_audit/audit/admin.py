@@ -7,6 +7,7 @@ from .models import CatalogProduct
 from .models import Floor
 from .models import FloorPlan
 from .models import FloorPlanPin
+from .models import KnowledgeDoc
 from .models import LightLevelReading
 from .models import LogEntry
 from .models import ProductAccessory
@@ -272,6 +273,12 @@ class ProductAccessoryAdmin(admin.ModelAdmin):
     list_display = ("sku", "name", "base_family", "accessory_type")
     list_filter = ("accessory_type", "base_family")
     search_fields = ("sku", "name", "base_family")
+
+
+@admin.register(KnowledgeDoc)
+class KnowledgeDocAdmin(admin.ModelAdmin):
+    list_display = ("title", "source_path", "created")
+    search_fields = ("title", "source_path", "chunk_text")
 
 
 @admin.register(SpecItem)
