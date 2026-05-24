@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 from django_extensions.db.models import TimeStampedModel
 from pgvector.django import VectorField
 
@@ -509,6 +510,54 @@ class Photo(TimeStampedModel):
 
     def __str__(self):
         return f"{self.photo_type} - {self.building.name}"
+
+
+class FlagSeverity(models.TextChoices):
+    INFO = "info", "Info"
+    WARN = "warn", "Warning"
+    CRITICAL = "critical", "Critical"
+
+
+class FlagStatus(models.TextChoices):
+    ACTIVE = "active", "Active"
+    DISMISSED = "dismissed", "Dismissed"
+
+
+class AuditFlag(TimeStampedModel):
+    log_entry = models.ForeignKey(
+        LogEntry, on_delete=models.CASCADE, related_name="audit_flags",
+    )
+    audit_version = models.ForeignKey(
+        AuditVersion, on_delete=models.CASCADE, related_name="audit_flags",
+    )
+    severity = models.CharField(
+        max_length=10, choices=FlagSeverity.choices, default=FlagSeverity.INFO,
+    )
+    message = models.TextField()
+    status = models.CharField(
+        max_length=10, choices=FlagStatus.choices, default=FlagStatus.ACTIVE,
+    )
+    dismissed_reason = models.TextField(blank=True)
+    dismissed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="dismissed_flags",
+    )
+    dismissed_at = models.DateTimeField(null=True, blank=True)
+    # Will become FK to AgentRun once that model exists (US-015)
+    source_run_id = models.PositiveIntegerField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.severity} flag: {self.message[:50]}"
+
+    def dismiss(self, user, reason=""):
+        self.status = FlagStatus.DISMISSED
+        self.dismissed_by = user
+        self.dismissed_reason = reason
+        self.dismissed_at = timezone.now()
+        self.save()
 
 
 class KnowledgeDoc(TimeStampedModel):

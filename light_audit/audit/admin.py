@@ -1,5 +1,6 @@
 from django.contrib import admin
 
+from .models import AuditFlag
 from .models import AuditVersion
 from .models import Building
 from .models import CatalogModifier
@@ -287,6 +288,16 @@ class PhotoAdmin(admin.ModelAdmin):
 class KnowledgeDocAdmin(admin.ModelAdmin):
     list_display = ("title", "source_path", "created")
     search_fields = ("title", "source_path", "chunk_text")
+
+
+@admin.register(AuditFlag)
+class AuditFlagAdmin(admin.ModelAdmin):
+    list_display = (
+        "log_entry", "audit_version", "severity",
+        "status", "dismissed_by", "dismissed_at",
+    )
+    list_filter = ("severity", "status")
+    search_fields = ("message", "dismissed_reason")
 
 
 @admin.register(SpecItem)

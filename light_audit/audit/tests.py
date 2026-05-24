@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.db.models import ProtectedError
 
+from light_audit.audit.models import AuditFlag
 from light_audit.audit.models import AuditVersion
 from light_audit.audit.models import Building
 from light_audit.audit.models import Floor
@@ -306,3 +307,113 @@ class TestPhoto:
         for ptype in ["fixture", "switch", "controls", "panorama", "video"]:
             photo = Photo.objects.create(building=building, photo_type=ptype)
             assert photo.photo_type == ptype
+
+
+@pytest.mark.django_db
+class TestAuditFlag:
+    @pytest.fixture
+    def log_entry(self, building):
+        version = AuditVersion.objects.create(building=building)
+        floor = Floor.objects.create(
+            building=building, name="Floor 1", audit_version=version,
+        )
+        room = Room.objects.create(
+            floor=floor, name="Room 1", audit_version=version,
+        )
+        return LogEntry.objects.create(
+            room=room, fixture_id="E1", audit_version=version,
+        )
+
+    def test_create_active_flag(self, log_entry):
+        flag = AuditFlag.objects.create(
+            log_entry=log_entry,
+            audit_version=log_entry.audit_version,
+            severity="warn",
+            message="Wattage seems too high",
+        )
+        assert flag.pk is not None
+        assert flag.status == "active"
+        assert flag.severity == "warn"
+        assert flag.dismissed_by is None
+        assert flag.dismissed_at is None
+        assert flag.dismissed_reason == ""
+
+    def test_dismiss_flag(self, log_entry, user):
+        flag = AuditFlag.objects.create(
+            log_entry=log_entry,
+            audit_version=log_entry.audit_version,
+            severity="critical",
+            message="Missing controls data",
+        )
+        flag.dismiss(user, reason="Verified on site")
+        flag.refresh_from_db()
+        assert flag.status == "dismissed"
+        assert flag.dismissed_by == user
+        assert flag.dismissed_reason == "Verified on site"
+        assert flag.dismissed_at is not None
+
+    def test_dismiss_without_reason(self, log_entry, user):
+        flag = AuditFlag.objects.create(
+            log_entry=log_entry,
+            audit_version=log_entry.audit_version,
+            severity="info",
+            message="Note about fixture",
+        )
+        flag.dismiss(user)
+        flag.refresh_from_db()
+        assert flag.status == "dismissed"
+        assert flag.dismissed_reason == ""
+
+    def test_severity_choices(self, log_entry):
+        for sev in ["info", "warn", "critical"]:
+            flag = AuditFlag.objects.create(
+                log_entry=log_entry,
+                audit_version=log_entry.audit_version,
+                severity=sev,
+                message=f"Test {sev}",
+            )
+            assert flag.severity == sev
+
+    def test_cascade_on_log_entry_delete(self, log_entry):
+        AuditFlag.objects.create(
+            log_entry=log_entry,
+            audit_version=log_entry.audit_version,
+            severity="warn",
+            message="Will be deleted",
+        )
+        entry_id = log_entry.pk
+        assert AuditFlag.objects.filter(log_entry_id=entry_id).count() == 1
+        log_entry.delete()
+        assert AuditFlag.objects.filter(log_entry_id=entry_id).count() == 0
+
+    def test_cascade_on_audit_version_delete(self, building):
+        version = AuditVersion.objects.create(building=building)
+        floor = Floor.objects.create(
+            building=building, name="F1", audit_version=version,
+        )
+        room = Room.objects.create(
+            floor=floor, name="R1", audit_version=version,
+        )
+        entry = LogEntry.objects.create(
+            room=room, fixture_id="X1", audit_version=version,
+        )
+        AuditFlag.objects.create(
+            log_entry=entry,
+            audit_version=version,
+            severity="info",
+            message="Test cascade",
+        )
+        vid = version.pk
+        assert AuditFlag.objects.filter(audit_version_id=vid).count() == 1
+        version.delete()
+        assert AuditFlag.objects.filter(audit_version_id=vid).count() == 0
+
+    def test_str_representation(self, log_entry):
+        flag = AuditFlag.objects.create(
+            log_entry=log_entry,
+            audit_version=log_entry.audit_version,
+            severity="critical",
+            message="A very long message that should be truncated",
+        )
+        assert "critical flag:" in str(flag)
+        assert len(str(flag)) <= 70  # noqa: PLR2004
