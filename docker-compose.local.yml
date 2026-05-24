@@ -1,0 +1,79 @@
+volumes:
+  light_audit_local_postgres_data: {}
+  light_audit_local_postgres_data_backups: {}
+  light_audit_local_redis_data: {}
+
+services:
+  django: &django
+    build:
+      context: .
+      dockerfile: ./compose/local/django/Dockerfile
+    image: light_audit_local_django
+    container_name: light_audit_local_django
+    depends_on:
+      - postgres
+      - redis
+      - mailpit
+    volumes:
+      - /app/.venv
+      - .:/app:z
+    env_file:
+      - ./.envs/.local/.django
+      - ./.envs/.local/.postgres
+    ports:
+      - '8000:8000'
+    command: /start
+
+  postgres:
+    build:
+      context: .
+      dockerfile: ./compose/production/postgres/Dockerfile
+    image: light_audit_production_postgres
+    container_name: light_audit_local_postgres
+    volumes:
+      - light_audit_local_postgres_data:/var/lib/postgresql/18/docker
+      - light_audit_local_postgres_data_backups:/backups
+    env_file:
+      - ./.envs/.local/.postgres
+
+  mailpit:
+    image: docker.io/axllent/mailpit:latest
+    container_name: light_audit_local_mailpit
+    ports:
+      - "8025:8025"
+
+  redis:
+    image: docker.io/redis:7.2
+    container_name: light_audit_local_redis
+    volumes:
+      - light_audit_local_redis_data:/data
+
+  celeryworker:
+    <<: *django
+    image: light_audit_local_celeryworker
+    container_name: light_audit_local_celeryworker
+    depends_on:
+      - redis
+      - postgres
+      - mailpit
+    ports: []
+    command: /start-celeryworker
+
+  celerybeat:
+    <<: *django
+    image: light_audit_local_celerybeat
+    container_name: light_audit_local_celerybeat
+    depends_on:
+      - redis
+      - postgres
+      - mailpit
+    ports: []
+    command: /start-celerybeat
+
+  flower:
+    <<: *django
+    image: light_audit_local_flower
+    container_name: light_audit_local_flower
+    ports:
+      - '5555:5555'
+    command: /start-flower
