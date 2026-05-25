@@ -481,8 +481,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 34,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "video-cap.js: checkVideoDuration + captureWithPolicy; cleanup nulls handlers before src='' to prevent infinite loop in tests; rejects non-image/non-video files."
     },
     {
       "id": "US-035",

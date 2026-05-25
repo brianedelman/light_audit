@@ -435,3 +435,11 @@ Started: 2026-05-24
   - TIFF date format: "YYYY:MM:DD HH:MM:SS\0" (20 bytes, ASCII type=2)
   - canvas.toBlob() returns null in jsdom → test canvas-dependent paths require real browser; test fast-path (under-limit) separately
 ---
+US-034 | 2026-05-25 | passes=true
+  - video-cap.js: checkVideoDuration reads HTMLVideoElement.duration via onloadedmetadata
+  - cleanup() must null out onloadedmetadata + onerror before setting src='' to prevent re-triggering mock src setter → infinite microtask loop
+  - captureWithPolicy: video→duration check; panorama→as-is; image→compress; else→reject
+  - isImage check required to reject non-image/non-video files (PDF etc)
+  - makeVideoEl mock: src setter fires Promise.resolve().then(() => handler?.()) for sync-ish tests
+  - mockCreateObjectUrl avoids jsdom URL.createObjectURL unavailability
+---
