@@ -2,6 +2,20 @@ Ralph progress log — Light Audit Platform Phase 1
 Branch: ralph/phase-1
 Started: 2026-05-24
 
+## 2026-05-25 - US-025
+- Created `light_audit/audit/tasks.py` with `generate_thumbnail(photo_id)` shared Celery task
+- Task downloads original from R2 via boto3, resizes with Pillow (300x300 thumbnail), uploads JPEG back to R2, updates Photo.thumbnail_url
+- Created `light_audit/audit/signals.py` with post_save receiver on Photo — triggers `generate_thumbnail.delay(photo_id)` when upload_status transitions to UPLOADED
+- Updated `light_audit/audit/apps.py` with `ready()` to wire signals
+- 8 pytest tests: thumbnail path helper, create+upload, resize dimensions, missing photo, no storage_path, signal triggers on UPLOADED, signal ignores UPLOADING
+- All 135 backend tests pass; ruff clean
+- Files changed: audit/tasks.py (new), audit/signals.py (new), audit/apps.py, audit/test_thumbnail_task.py (new)
+- **Learnings for future iterations:**
+  - Patch task in tests via `patch("light_audit.audit.tasks.generate_thumbnail")` — signal imports task inside function body (deferred import to avoid circular), so patching `signals.generate_thumbnail` won't work
+  - `apps.py ready()` import must use `# noqa: F401, PLC0415` — PLC0415 fires on in-method imports (this is the correct Django pattern for signals)
+  - Pillow already in pyproject.toml (pillow==12.2.0) — no new dep needed
+---
+
 ## Codebase Patterns
 - Project uses `postgres:18` base image with custom Dockerfile at `compose/production/postgres/Dockerfile` — shared by both local and production docker-compose
 - Local dev uses `just` recipes; `just test` runs pytest, `just migrate` runs migrations against local postgres on port 5433
