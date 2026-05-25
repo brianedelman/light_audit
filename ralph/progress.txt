@@ -375,3 +375,22 @@ Started: 2026-05-24
   - `.d.ts` declarations allow typed imports of plain JS files without `allowJs: true` in tsconfig
   - storage.js inlined as `<script type="module">` (not plain `<script>`) so ES module `export` syntax is valid
 ---
+
+## 2026-05-25 - US-031
+- Created `html_app/storage-shim.js`: localStorage shim with sync getItem/setItem/removeItem backed by an in-memory Map
+- Boot (_boot) hydrates cache from IndexedDB; on first boot migrates all localStorage keys to IndexedDB then clears localStorage
+- Migration sentinel key (`__auditShimMigrated`) prevents double-migration on subsequent boots
+- Writes flush to IndexedDB async (fire-and-forget) via _flushSet/_flushRemove
+- window.__auditStorageReady exposed as a Promise so app.js can await hydration before using the shim
+- Added `<script type="module" src="./storage-shim.js"></script>` BEFORE app.js in app.html
+- Updated bundler to inline storage-shim.js as `<script type="module">` block
+- Created `html_app/storage-shim.d.ts` with TypeScript type declarations
+- 10 vitest tests in `frontend/src/__tests__/storage-shim.test.ts`: sync API, migration, sentinel, hydration, plain strings
+- All 158 backend + 37 frontend tests pass; tsc + ruff clean
+- **Learnings for future iterations:**
+  - Shim stores raw strings (identical to localStorage contract) — do NOT parse values in setItem; just store and return as-is
+  - The migration sentinel stored as `'__done__'` string to distinguish from absence (undefined)
+  - Boot must complete before app.js reads storage; use `window.__auditStorageReady` Promise to gate execution
+  - fake-indexeddb reset: call `indexedDB.deleteDatabase('auditDB')` in afterEach to fully clear state between tests
+  - _cache must also be cleared manually in tests (it's a module-level Map that persists across test cases)
+---
