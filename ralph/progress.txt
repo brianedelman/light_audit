@@ -203,3 +203,22 @@ Started: 2026-05-24
   - Use `ninja.responses.Status(code, data)` not tuple `(code, data)` — tuple is deprecated in ninja 1.6+
   - `authenticate()` uses `username=` kwarg even when USERNAME_FIELD=email (Django auth backend maps it)
 ---
+
+## 2026-05-24 - US-020
+- Set up TanStack Router (code-based) in `src/router.tsx` with routes: /, /login, /password-reset, /password-reset/confirm/$token
+- Created `src/context/AuthContext.tsx`: AuthProvider + useAuth hook, useQuery for /api/auth/me, useMutation for login/logout
+- Created `src/pages/LoginPage.tsx`: email/password form, redirect to / on success, redirect away if already logged in
+- Created `src/pages/PasswordResetPage.tsx`: email form, POST to /api/auth/password-reset/
+- Created `src/pages/PasswordResetConfirmPage.tsx`: new password form, uses $token from URL params
+- Updated `src/main.tsx`: RouterProvider + AuthProvider wrapping
+- Updated `src/lib/api.ts`: interceptor skips redirect if `skipAuthRedirect` config set or already on /login
+- 5 new frontend tests: auth context null user, auth context logged-in user, login form renders, form submits to API, error on failed login
+- 14 frontend tests pass, build passes (tsc + vite)
+- Files changed: src/router.tsx, src/context/AuthContext.tsx, src/pages/*, src/main.tsx, src/lib/api.ts, src/__tests__/App.test.tsx, src/__tests__/auth.test.tsx
+- **Learnings for future iterations:**
+  - TanStack Router v1 code-based: createRootRoute + createRoute + routeTree.addChildren([]) pattern
+  - Per-request skip of auth redirect: pass `{ skipAuthRedirect: true }` as config to api.get(), check in interceptor via `error.config`
+  - Auth context uses `try/catch` around api.get('/auth/me/') to return null without triggering redirect
+  - Mock `@tanstack/react-router` in tests: `vi.importActual` + spread + override `useNavigate`, `useParams`
+  - Cast mocked axios via `as unknown as { get: Mock, post: Mock }` to satisfy TS
+---

@@ -24,7 +24,8 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const skip = (error.config as Record<string, unknown> | undefined)?.skipAuthRedirect
+    if (error.response?.status === 401 && !skip && window.location.pathname !== '/login') {
       window.location.href = '/login';
     }
     return Promise.reject(error as Error);

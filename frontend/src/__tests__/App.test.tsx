@@ -1,18 +1,30 @@
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
-import App from "../App";
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { createRouter, createRootRoute } from '@tanstack/react-router'
+import { RouterProvider } from '@tanstack/react-router'
 
-describe("App", () => {
-  it("renders the get started heading", () => {
-    render(<App />);
-    expect(screen.getByText("Get started")).toBeInTheDocument();
-  });
+// Minimal router sanity check: root route renders
+const rootRoute = createRootRoute({ component: () => <div>Test Root</div> })
+const testRouter = createRouter({ routeTree: rootRoute.addChildren([]) })
 
-  it("increments counter on click", () => {
-    render(<App />);
-    const button = screen.getByRole("button", { name: /count is/i });
-    expect(button).toHaveTextContent("Count is 0");
-    fireEvent.click(button);
-    expect(button).toHaveTextContent("Count is 1");
-  });
-});
+function wrapper({ children }: { children: React.ReactNode }) {
+  const qc = new QueryClient()
+  return <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+}
+
+describe('Router', () => {
+  it('renders root route', async () => {
+    render(<RouterProvider router={testRouter} />, { wrapper })
+    expect(await screen.findByText('Test Root')).toBeInTheDocument()
+  })
+})
+
+// Suppress unhandled vi mock warnings
+vi.mock('../lib/api', () => ({
+  default: {
+    get: vi.fn().mockRejectedValue({ response: { status: 401 } }),
+    post: vi.fn(),
+    interceptors: { request: { use: vi.fn() }, response: { use: vi.fn() } },
+  },
+}))
