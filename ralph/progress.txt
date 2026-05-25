@@ -190,3 +190,16 @@ Started: 2026-05-24
   - When a model is needed by a later story's FK, implement it early (AgentRun was built in US-014 to satisfy AuditFlag.source_run FK)
   - No additional migration needed — 0011 covered AgentRun creation + AuditFlag.source_run FK in one operation
 ---
+
+## 2026-05-24 - US-017
+- Created `light_audit/users/api/auth.py` with auth router: POST /api/auth/login/, POST /api/auth/logout/, GET /api/auth/me/
+- Login endpoint uses `auth=None` to bypass global SessionAuth; calls `authenticate()` + `login()`; returns `Status(200, user)` or `Status(401, ...)`
+- Registered auth router in `config/api.py`: `api.add_router("/auth/", ...)`
+- 8 pytest tests: happy path login, wrong password, unknown email, anon allowed on login, me returns user, me requires auth, logout, logout requires auth
+- All 88 backend tests pass
+- Files changed: light_audit/users/api/auth.py (new), config/api.py, light_audit/users/tests/api/test_auth.py (new)
+- **Learnings for future iterations:**
+  - Per-endpoint auth override: `@router.post("/login/", auth=None)` overrides global NinjaAPI auth=SessionAuth()
+  - Use `ninja.responses.Status(code, data)` not tuple `(code, data)` — tuple is deprecated in ninja 1.6+
+  - `authenticate()` uses `username=` kwarg even when USERNAME_FIELD=email (Django auth backend maps it)
+---

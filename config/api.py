@@ -9,3 +9,4 @@ api = NinjaAPI(
 )
 
 api.add_router("/users/", "light_audit.users.api.views.router")
+api.add_router("/auth/", "light_audit.users.api.auth.router")
