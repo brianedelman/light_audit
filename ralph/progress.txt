@@ -443,3 +443,11 @@ US-034 | 2026-05-25 | passes=true
   - makeVideoEl mock: src setter fires Promise.resolve().then(() => handler?.()) for sync-ish tests
   - mockCreateObjectUrl avoids jsdom URL.createObjectURL unavailability
 ---
+US-018 | 2026-05-25 | passes=true
+  - Django PasswordResetTokenGenerator — no extra model needed, token encodes user pk + password hash
+  - Always return 200 on /password-reset/ regardless of email existence (user enumeration prevention)
+  - FRONTEND_URL setting (default http://localhost:3000) controls reset link; local.py EMAIL_HOST=mailpit:1025
+  - test settings use locmem.EmailBackend so mail.outbox works in pytest
+  - Token is single-use: Django checks password hash in token; changing password invalidates old tokens
+  - Email template at templates/users/password_reset_email.txt
+---

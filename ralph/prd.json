@@ -845,8 +845,8 @@
         "Typecheck passes"
       ],
       "priority": 18,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Uses Django PasswordResetTokenGenerator; user-enumeration safe (always 200 on request); token invalidates after password change. FRONTEND_URL setting controls reset link base URL."
     }
   ]
 }
