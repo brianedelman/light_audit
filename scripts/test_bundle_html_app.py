@@ -152,6 +152,13 @@ def test_no_manifest_no_error(split_dir: Path, tmp_path: Path) -> None:
     assert not (tmp_path / "out" / "manifest.json").exists()
 
 
+def test_sw_copied(split_dir: Path, tmp_path: Path) -> None:
+    (split_dir / "sw.js").write_text("// sw", encoding="utf-8")
+    out = tmp_path / "out" / "index.html"
+    bundle(split_dir, out)
+    assert (tmp_path / "out" / "sw.js").read_text() == "// sw"
+
+
 def test_script_src_without_dot_slash(tmp_path: Path) -> None:
     """<script src="app.js"> (no leading ./) also gets inlined."""
     html = '<script src="app.js"></script>'

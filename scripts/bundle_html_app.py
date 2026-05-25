@@ -57,6 +57,11 @@ def bundle(html_dir: Path, output_path: Path) -> None:
     if manifest_src.exists():
         shutil.copy2(manifest_src, output_dir / "manifest.json")
 
+    # Copy sw.js if present
+    sw_src = html_dir / "sw.js"
+    if sw_src.exists():
+        shutil.copy2(sw_src, output_dir / "sw.js")
+
     # Copy icons/ directory if present
     icons_src = html_dir / "icons"
     if icons_src.is_dir():
