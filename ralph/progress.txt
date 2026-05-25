@@ -178,3 +178,15 @@ Started: 2026-05-24
   - FlagSeverity and FlagStatus TextChoices added for type safety
   - `django.utils.timezone` import at module top level (PLC0415 rule forbids in-method imports)
 ---
+
+## 2026-05-24 - US-015
+- AgentRun model was already implemented as part of US-014 work (migration 0011 converted source_run_id PositiveIntegerField to proper FK)
+- AgentType and AgentRunStatus TextChoices defined; model has agent_type, user, project, audit_version, prompt_input, response_output, tokens_in, tokens_out, started_at, finished_at, status, error
+- mark_ok() and mark_error() helper methods implemented
+- 7 pytest tests covering: create, mark_ok, mark_error, with_project_and_version, cascade_on_user_delete, set_null_on_project_delete, str_representation
+- All 80 backend tests pass
+- Files changed: ralph/prd.json (marking passes: true)
+- **Learnings for future iterations:**
+  - When a model is needed by a later story's FK, implement it early (AgentRun was built in US-014 to satisfy AuditFlag.source_run FK)
+  - No additional migration needed — 0011 covered AgentRun creation + AuditFlag.source_run FK in one operation
+---
