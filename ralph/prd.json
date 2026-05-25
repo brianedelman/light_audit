@@ -545,8 +545,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 38,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Added created_by_name to AuditVersionSchema. ProjectDetailPage uses expandable buildings with BuildingVersionsTable sub-component using TanStack Table with sorting. 5 frontend tests cover render, expand, sort, error, empty states."
     },
     {
       "id": "US-039",

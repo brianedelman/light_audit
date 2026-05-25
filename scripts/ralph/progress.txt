@@ -10,6 +10,8 @@ Started: Sun May 24 11:20:00 EDT 2026
 - Backend docker-compose not available locally; backend tests require `just pytest` with Docker
 - Django Ninja schemas support `resolve_<field>` static methods for computed fields
 - Use `annotate()` on querysets to avoid N+1 for computed counts
+- TanStack Table: `createColumnHelper<T>()` + `getCoreRowModel`/`getSortedRowModel` for sortable tables
+- `useParams({ from: '/route/$param' })` for type-safe param extraction in TanStack Router
 
 ---
 
@@ -24,4 +26,17 @@ Started: Sun May 24 11:20:00 EDT 2026
   - Existing pages use simple useState for forms, not TanStack Query mutations (except AuthContext)
   - Router uses flat route definitions with `createRoute()` + `rootRoute.addChildren()`
   - Backend tests can't run without Docker/DB — only frontend typecheck + vitest available locally
+---
+
+## 2026-05-25 - US-038
+- Implemented project detail page at /projects/$projectId route
+- Added created_by_name computed field to AuditVersionSchema via resolve_created_by_name
+- Created ProjectDetailPage with expandable buildings list + BuildingVersionsTable using TanStack Table
+- TanStack Table with sorting on all columns (version #, label, status, created by, created date)
+- Files changed: frontend/src/pages/ProjectDetailPage.tsx (new), frontend/src/__tests__/project-detail.test.tsx (new), frontend/src/router.tsx, light_audit/audit/api/schema.py
+- **Learnings for future iterations:**
+  - TanStack Table: use createColumnHelper<T>() + getCoreRowModel/getSortedRowModel for sortable tables
+  - useParams requires `{ from: '/route/$param' }` for type-safe param extraction
+  - AuditVersionSchema now has created_by_name field — no need to add it again
+  - Expandable UI pattern: useState<Set<number>> for tracking expanded items
 ---
