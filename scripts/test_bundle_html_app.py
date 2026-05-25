@@ -127,6 +127,31 @@ def test_output_dir_created_automatically(split_dir: Path, tmp_path: Path) -> No
     assert out.exists()
 
 
+def test_manifest_copied(split_dir: Path, tmp_path: Path) -> None:
+    (split_dir / "manifest.json").write_text('{"name":"Test"}', encoding="utf-8")
+    out = tmp_path / "out" / "index.html"
+    bundle(split_dir, out)
+    assert (tmp_path / "out" / "manifest.json").exists()
+    assert (tmp_path / "out" / "manifest.json").read_text() == '{"name":"Test"}'
+
+
+def test_icons_copied(split_dir: Path, tmp_path: Path) -> None:
+    icons = split_dir / "icons"
+    icons.mkdir()
+    (icons / "icon-192.png").write_bytes(b"fake-png-192")
+    (icons / "icon-512.png").write_bytes(b"fake-png-512")
+    out = tmp_path / "out" / "index.html"
+    bundle(split_dir, out)
+    assert (tmp_path / "out" / "icons" / "icon-192.png").read_bytes() == b"fake-png-192"
+    assert (tmp_path / "out" / "icons" / "icon-512.png").read_bytes() == b"fake-png-512"
+
+
+def test_no_manifest_no_error(split_dir: Path, tmp_path: Path) -> None:
+    out = tmp_path / "out" / "index.html"
+    bundle(split_dir, out)  # no manifest.json in split_dir
+    assert not (tmp_path / "out" / "manifest.json").exists()
+
+
 def test_script_src_without_dot_slash(tmp_path: Path) -> None:
     """<script src="app.js"> (no leading ./) also gets inlined."""
     html = '<script src="app.js"></script>'

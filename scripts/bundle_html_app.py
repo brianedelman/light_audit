@@ -6,10 +6,13 @@ Split-file mode: replaces <link href="app.css"> with inlined <style> and
 
 Single-file mode: passes through unchanged when app.html already has inline
 <style> / <script> for the app content.
+
+Also copies manifest.json and icons/ to the output directory.
 """
 from __future__ import annotations
 
 import re
+import shutil
 import sys
 from pathlib import Path
 
@@ -45,8 +48,23 @@ def bundle(html_dir: Path, output_path: Path) -> None:
         js_replacement = f"<script>\n{js_content}\n</script>"
         html = js_script_pattern.sub(lambda _: js_replacement, html)
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_dir = output_path.parent
+    output_dir.mkdir(parents=True, exist_ok=True)
     output_path.write_text(html, encoding="utf-8")
+
+    # Copy manifest.json if present
+    manifest_src = html_dir / "manifest.json"
+    if manifest_src.exists():
+        shutil.copy2(manifest_src, output_dir / "manifest.json")
+
+    # Copy icons/ directory if present
+    icons_src = html_dir / "icons"
+    if icons_src.is_dir():
+        icons_dst = output_dir / "icons"
+        if icons_dst.exists():
+            shutil.rmtree(icons_dst)
+        shutil.copytree(icons_src, icons_dst)
+
     sys.stdout.write(f"Bundled → {output_path}\n")
 
 
