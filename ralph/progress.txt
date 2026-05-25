@@ -416,3 +416,22 @@ Started: 2026-05-24
   - Migration in `_bootApp()` uses `fetch(dataUrl)` to convert base64 → Blob; this works since data: URLs are fetchable
   - `capturePhotoBlob` takes `compressToBlob` as explicit param to enable easy test mocking
 ---
+
+## 2026-05-25 - US-033
+- Created `html_app/compress.js`: ES module with quality-tuned JPEG compression + raw EXIF parse
+  - `extractExifTimestamp(file)` → Date|null — reads JPEG APP1 markers, parses TIFF IFD for tags 0x9003/0x9004/0x0132
+  - `compressToTarget(file, maxBytes=2MB)` → {blob, timestamp, width, height} — fast-path returns original if already under limit; otherwise binary-searches JPEG quality (0.5→0.95) via canvas
+  - `window.auditCompress` exposed for non-module scripts
+- Created `html_app/compress.d.ts` with TypeScript type declarations
+- Updated `html_app/app.js` `compressToBlob()` to delegate to `window.auditCompress.compressToTarget` when available
+- Added `<script type="module" src="./compress.js">` to app.html; bundler inlines it
+- 9 vitest tests: EXIF extraction (non-JPEG, no EXIF, synthetic EXIF, empty), compressToTarget (fast path, timestamp, width/height, EXIF retention)
+- Synthetic EXIF JPEG builder in test: manually constructs APP1/TIFF/IFD bytes to test raw parser without external libs
+- All 158 backend + 60 frontend tests pass; tsc + ruff clean
+- Browser verification: manual check needed
+- **Learnings for future iterations:**
+  - JPEG EXIF structure: SOI(0xFFD8) → APP1(0xFFE1) → "Exif\0\0" → TIFF header (II/MM) → IFD0 → SubExifIFD
+  - DateTime tags: 0x0132 (DateTime, IFD0), 0x9003 (DateTimeOriginal, SubExifIFD), 0x9004 (DateTimeDigitized, SubExifIFD)
+  - TIFF date format: "YYYY:MM:DD HH:MM:SS\0" (20 bytes, ASCII type=2)
+  - canvas.toBlob() returns null in jsdom → test canvas-dependent paths require real browser; test fast-path (under-limit) separately
+---
