@@ -48,6 +48,18 @@ def bundle(html_dir: Path, output_path: Path) -> None:
         js_replacement = f"<script>\n{js_content}\n</script>"
         html = js_script_pattern.sub(lambda _: js_replacement, html)
 
+    # --- storage.js ---
+    # Match <script type="module" src="./storage.js"> or <script src="./storage.js">
+    storage_pattern = re.compile(
+        r'<script\b[^>]*\bsrc=["\']\.?/?storage\.js["\'][^>]*>\s*</script>',
+        re.IGNORECASE,
+    )
+    storage_file = html_dir / "storage.js"
+    if storage_pattern.search(html) and storage_file.exists():
+        storage_content = storage_file.read_text(encoding="utf-8")
+        storage_replacement = f'<script type="module">\n{storage_content}\n</script>'
+        html = storage_pattern.sub(lambda _: storage_replacement, html)
+
     output_dir = output_path.parent
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path.write_text(html, encoding="utf-8")

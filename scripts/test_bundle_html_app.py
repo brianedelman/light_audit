@@ -159,6 +159,29 @@ def test_sw_copied(split_dir: Path, tmp_path: Path) -> None:
     assert (tmp_path / "out" / "sw.js").read_text() == "// sw"
 
 
+def test_storage_js_inlined_as_module(tmp_path: Path) -> None:
+    """<script type="module" src="./storage.js"> gets inlined as <script type="module">."""
+    html = '<script src="./app.js"></script>\n<script type="module" src="./storage.js"></script>'
+    (tmp_path / "app.html").write_text(html, encoding="utf-8")
+    (tmp_path / "app.css").write_text("", encoding="utf-8")
+    (tmp_path / "app.js").write_text("var a = 1;", encoding="utf-8")
+    (tmp_path / "storage.js").write_text("export function getJSON(){}", encoding="utf-8")
+    out = tmp_path / "out.html"
+    bundle(tmp_path, out)
+    content = out.read_text(encoding="utf-8")
+    assert 'src="./storage.js"' not in content
+    assert 'export function getJSON(){}' in content
+    assert '<script type="module">' in content
+
+
+def test_storage_js_absent_no_error(split_dir: Path, tmp_path: Path) -> None:
+    """Bundler skips storage.js inlining when file not present."""
+    html = '<script src="./app.js"></script>'
+    (split_dir / "app.html").write_text(html, encoding="utf-8")
+    out = tmp_path / "out.html"
+    bundle(split_dir, out)  # no storage.js in split_dir — should not error
+
+
 def test_script_src_without_dot_slash(tmp_path: Path) -> None:
     """<script src="app.js"> (no leading ./) also gets inlined."""
     html = '<script src="app.js"></script>'
