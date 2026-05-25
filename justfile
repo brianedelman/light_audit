@@ -151,3 +151,7 @@ frontend-test:
 # frontend-lint: Run ESLint.
 frontend-lint:
     cd frontend && npm run lint
+
+# html-app-build: Bundle html_app into dist/audit-pwa/index.html.
+html-app-build:
+    {{py}} scripts/bundle_html_app.py
