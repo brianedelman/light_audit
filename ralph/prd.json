@@ -514,8 +514,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 36,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "sync-drain.js: polling via setTimeout chain; _tick checks online+visible before draining. Backoff index resets on clean pass. CustomEvent 'sync-status' emitted for UI badge. Bundler refactored to _inline_module helper for all ES modules."
     },
     {
       "id": "US-037",

@@ -72,6 +72,8 @@ Started: 2026-05-24
 - Custom User model: email-based (no username field). Create with `User.objects.create_user(email=..., password=...)`
 - `scripts/` is a Python package (has `__init__.py`) — required by ruff INP001 and pytest `--import-mode=importlib`
 - `re.sub` interprets backslash sequences in the replacement string — use `lambda _: replacement` for HTML/JS content that contains `\u` or other escapes
+- Bundler `_inline_module()` handles all ES module inlining — to add a new module, just append filename to `module_files` list in `bundle()`
+- `vi.runAllTimersAsync()` causes infinite loops with self-rescheduling setTimeout chains — use `vi.advanceTimersByTimeAsync(ms)` instead
 
 ---
 
@@ -457,4 +459,19 @@ US-035 | 2026-05-25 | passes=true
   - markFailed: get item → mutate in-place → put back (IDB update pattern)
   - markDone: delete by id (no-op if unknown)
   - Window.syncQueue exposed for non-module access
+---
+US-036 | 2026-05-25 | passes=true
+  - sync-drain.js: polling loop via setTimeout chain; _tick checks navigator.onLine + document.visibilityState
+  - drainOnce processes all queue items: audit→POST /api/audits/sync; media→multipart start/sign-part/complete
+  - Exponential backoff: BACKOFF_SECS=[10,30,120,600]; resets to 0 on clean pass
+  - CustomEvent 'sync-status' dispatched on document with {queueLength, active} for UI
+  - Fixed-position badge (#sync-status-badge) in app.html shows queue length + syncing state
+  - startDrain called with 3s initial delay after boot
+  - Bundler refactored: extracted _inline_module() helper to eliminate C901/PLR0912/PLR0915
+  - Fixed pre-existing TS error in video-cap.test.ts (unused `f` param → `_f`)
+  - 13 vitest tests: drainOnce audit/media/empty, backoff index, idempotent start, stopDrain
+  - **Learnings for future iterations:**
+    - vi.runAllTimersAsync causes infinite loop with self-rescheduling setTimeout chains — use vi.advanceTimersByTimeAsync instead
+    - _tick calls peek() 3 times per tick (status before, drainOnce, status after) — test assertions must account for this
+    - Bundler module inlining is fully generic now — just add filename to module_files list
 ---
