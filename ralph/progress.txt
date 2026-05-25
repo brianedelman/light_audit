@@ -451,3 +451,10 @@ US-018 | 2026-05-25 | passes=true
   - Token is single-use: Django checks password hash in token; changing password invalidates old tokens
   - Email template at templates/users/password_reset_email.txt
 ---
+US-035 | 2026-05-25 | passes=true
+  - sync-queue.js opens auditDB at DB_VERSION=2 (storage.js uses v1); onupgradeneeded guards existing stores
+  - autoIncrement keyPath='id' gives sequential numeric IDs → getAll() returns oldest-first naturally
+  - markFailed: get item → mutate in-place → put back (IDB update pattern)
+  - markDone: delete by id (no-op if unknown)
+  - Window.syncQueue exposed for non-module access
+---

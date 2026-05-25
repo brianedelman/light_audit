@@ -496,8 +496,8 @@
         "Typecheck passes"
       ],
       "priority": 35,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "sync-queue.js opens auditDB at v2 (bumped from storage.js v1) so onupgradeneeded adds sync_queue store alongside existing json/blobs stores. Uses autoIncrement for drain order."
     },
     {
       "id": "US-036",
