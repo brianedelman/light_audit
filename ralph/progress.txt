@@ -341,3 +341,18 @@ Started: 2026-05-24
   - `generate_presigned_url("upload_part", ...)` is the operation name for multipart part signing in boto3
   - Storage path pattern: `media/{building_pk}/{uuid4()}/{filename}` keeps objects organized by building
 ---
+
+## 2026-05-25 - US-029
+- Django view `pwa_index` serves `dist/audit-pwa/index.html` at `/audit/` via FileResponse
+- Django view `pwa_asset` serves static PWA assets at `/audit/<path>` with correct MIME types
+- `sw.js` served with `Cache-Control: no-cache` + `Service-Worker-Allowed: /audit/` headers
+- Directory traversal protection via Path.resolve() + relative_to() check
+- Routes wired in `config/urls.py`: `path("audit/", pwa_index)` + `path("audit/<path:asset_path>", pwa_asset)`
+- 9 pytest tests in `light_audit/audit/test_pwa_views.py`: 200 on index, HTML content-type, sw.js no-cache, SW-Allowed header, JS content-type, manifest JSON, PNG icon, 404 on missing, 404 when not built
+- All 156 backend tests pass; ruff clean
+- Note: code was implemented in commit 759aa00 alongside US-028 but PRD was not updated — marked passes=true in this iteration
+- **Learnings for future iterations:**
+  - `_pwa_root()` helper function in views.py allows easy patching in tests via `patch("light_audit.audit.views._pwa_root", return_value=tmp_path)`
+  - `mimetypes.guess_type()` handles .js → `text/javascript`, .json → `application/json`, .png → `image/png` automatically on macOS/Linux
+  - Use `path("audit/<path:asset_path>", pwa_asset)` for Django path converter to handle nested paths like `icons/icon-192.png`
+---
