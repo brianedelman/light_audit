@@ -12283,14 +12283,19 @@ function openPhotoLightbox(photoKey, idx) {
   document.getElementById("photoLightbox").classList.add("open");
 }
 
-function renderLightbox() {
+async function renderLightbox() {
   const photos = getPhotos(_lbKey);
   if (!photos.length) {
     closePhotoLightbox();
     return;
   }
   _lbIdx = Math.max(0, Math.min(_lbIdx, photos.length - 1));
-  document.getElementById("photoLightboxImg").src = photos[_lbIdx];
+  const rawVal = photos[_lbIdx];
+  let src = rawVal;
+  if (window.photoStore && window.auditStorage) {
+    src = await window.photoStore.resolvePhotoSrc(rawVal, window.auditStorage);
+  }
+  document.getElementById("photoLightboxImg").src = src;
   const counter = document.getElementById("photoLbCounter");
   if (counter)
     counter.textContent =
@@ -12340,6 +12345,34 @@ function closePhotoLightbox() {
 // Resize to MAX_DIM-px max edge, JPEG quality 0.75. Typical iPad photo
 // (~8MB) → ~300–500KB. Keeps localStorage usable until the Supabase
 // upload path is wired in (then full photos go to remote, not localStorage).
+
+// Compress file to a Blob (used by the IndexedDB blob-storage path).
+async function compressToBlob(file, maxDim = 1600, quality = 0.75) {
+  const dataUrl = await new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = (e) => res(e.target.result);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+  const img = await new Promise((res, rej) => {
+    const i = new Image();
+    i.onload = () => res(i);
+    i.onerror = rej;
+    i.src = dataUrl;
+  });
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  if (!w || !h) return file; // fallback — return raw file as Blob
+  const scale = Math.min(1, maxDim / Math.max(w, h));
+  const tw = Math.max(1, Math.round(w * scale));
+  const th = Math.max(1, Math.round(h * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = tw;
+  canvas.height = th;
+  canvas.getContext("2d").drawImage(img, 0, 0, tw, th);
+  return new Promise((res) => canvas.toBlob(res, "image/jpeg", quality));
+}
+
 async function compressImageDataUrl(file, maxDim = 1600, quality = 0.75) {
   const dataUrl = await new Promise((res, rej) => {
     const r = new FileReader();
@@ -12388,9 +12421,15 @@ async function handleRoomLevelPhoto(input) {
   for (const file of Array.from(files)) {
     if (!file.type || !file.type.startsWith("image/")) continue;
     try {
-      const compressed = await compressImageDataUrl(file);
+      let stored;
+      if (window.photoStore && window.auditStorage) {
+        stored = await window.photoStore.capturePhotoBlob(
+          file, key, { photoType: "room" }, window.auditStorage, compressToBlob
+        );
+      }
+      if (!stored) stored = await compressImageDataUrl(file);
       const photos = getPhotos(key);
-      photos.push(compressed);
+      photos.push(stored);
       setPhotos(key, photos);
       savedAny = true;
     } catch (_) {
@@ -12446,9 +12485,15 @@ async function handlePendingFixturePhoto(input) {
   for (const file of Array.from(files)) {
     if (!file.type || !file.type.startsWith("image/")) continue;
     try {
-      const compressed = await compressImageDataUrl(file);
+      let stored;
+      if (window.photoStore && window.auditStorage) {
+        stored = await window.photoStore.capturePhotoBlob(
+          file, key, { photoType: "fixture" }, window.auditStorage, compressToBlob
+        );
+      }
+      if (!stored) stored = await compressImageDataUrl(file);
       const photos = getPhotos(key);
-      photos.push(compressed);
+      photos.push(stored);
       setPhotos(key, photos);
       savedAny = true;
     } catch (_) {
@@ -12488,9 +12533,15 @@ async function _captureRowPhoto(input, type, doneToast) {
   for (const file of Array.from(files)) {
     if (!file.type || !file.type.startsWith("image/")) continue;
     try {
-      const compressed = await compressImageDataUrl(file);
+      let stored;
+      if (window.photoStore && window.auditStorage) {
+        stored = await window.photoStore.capturePhotoBlob(
+          file, key, { photoType: type }, window.auditStorage, compressToBlob
+        );
+      }
+      if (!stored) stored = await compressImageDataUrl(file);
       const photos = getPhotos(key);
-      photos.push(compressed);
+      photos.push(stored);
       setPhotos(key, photos);
       savedAny = true;
     } catch (_) {
@@ -12519,9 +12570,15 @@ function handleRoomPhoto(input, roomName, type, gi) {
   let done = 0;
   imageFiles.forEach(async (file) => {
     try {
-      const compressed = await compressImageDataUrl(file);
+      let stored;
+      if (window.photoStore && window.auditStorage) {
+        stored = await window.photoStore.capturePhotoBlob(
+          file, key, { photoType: type }, window.auditStorage, compressToBlob
+        );
+      }
+      if (!stored) stored = await compressImageDataUrl(file);
       const photos = getPhotos(key);
-      photos.push(compressed);
+      photos.push(stored);
       setPhotos(key, photos);
     } catch (_) {
       toast("Could not load one of the photos");
@@ -25660,6 +25717,12 @@ function _bootApp() {
   bldgBootstrap();
   updateProjectsCrumb();
   updateHoursIndicator();
+  // Migrate any legacy base64 photos to IndexedDB blobs (runs async in background)
+  if (window.photoStore && window.auditStorage) {
+    window.photoStore.migratePhotosToBlobs(roomPhotos, window.auditStorage)
+      .then(({ changed }) => { if (changed) saveRoomPhotos(); })
+      .catch(() => {});
+  }
 }
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", _bootApp);

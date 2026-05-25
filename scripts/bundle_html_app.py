@@ -71,6 +71,17 @@ def bundle(html_dir: Path, output_path: Path) -> None:
         storage_replacement = f'<script type="module">\n{storage_content}\n</script>'
         html = storage_pattern.sub(lambda _: storage_replacement, html)
 
+    # --- photo-store.js ---
+    photo_store_pattern = re.compile(
+        r'<script\b[^>]*\bsrc=["\']\.?/?photo-store\.js["\'][^>]*>\s*</script>',
+        re.IGNORECASE,
+    )
+    photo_store_file = html_dir / "photo-store.js"
+    if photo_store_pattern.search(html) and photo_store_file.exists():
+        photo_store_content = photo_store_file.read_text(encoding="utf-8")
+        photo_store_replacement = f'<script type="module">\n{photo_store_content}\n</script>'
+        html = photo_store_pattern.sub(lambda _: photo_store_replacement, html)
+
     output_dir = output_path.parent
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path.write_text(html, encoding="utf-8")
