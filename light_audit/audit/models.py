@@ -475,6 +475,12 @@ class PhotoType(models.TextChoices):
     VIDEO = "video", "Video"
 
 
+class PhotoUploadStatus(models.TextChoices):
+    UPLOADING = "uploading", "Uploading"
+    UPLOADED = "uploaded", "Uploaded"
+    FAILED = "failed", "Failed"
+
+
 class Photo(TimeStampedModel):
     building = models.ForeignKey(
         Building, on_delete=models.CASCADE, related_name="photos"
@@ -516,6 +522,10 @@ class Photo(TimeStampedModel):
         related_name="photos",
     )
     notes = models.TextField(blank=True)
+    upload_status = models.CharField(
+        max_length=20, choices=PhotoUploadStatus.choices, blank=True, default=""
+    )
+    r2_upload_id = models.CharField(max_length=500, blank=True)
 
     def __str__(self):
         return f"{self.photo_type} - {self.building.name}"
