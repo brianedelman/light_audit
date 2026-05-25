@@ -93,6 +93,28 @@ def bundle(html_dir: Path, output_path: Path) -> None:
         compress_replacement = f'<script type="module">\n{compress_content}\n</script>'
         html = compress_pattern.sub(lambda _: compress_replacement, html)
 
+    # --- video-cap.js ---
+    video_cap_pattern = re.compile(
+        r'<script\b[^>]*\bsrc=["\']\.?/?video-cap\.js["\'][^>]*>\s*</script>',
+        re.IGNORECASE,
+    )
+    video_cap_file = html_dir / "video-cap.js"
+    if video_cap_pattern.search(html) and video_cap_file.exists():
+        video_cap_content = video_cap_file.read_text(encoding="utf-8")
+        video_cap_replacement = f'<script type="module">\n{video_cap_content}\n</script>'
+        html = video_cap_pattern.sub(lambda _: video_cap_replacement, html)
+
+    # --- sync-queue.js ---
+    sync_queue_pattern = re.compile(
+        r'<script\b[^>]*\bsrc=["\']\.?/?sync-queue\.js["\'][^>]*>\s*</script>',
+        re.IGNORECASE,
+    )
+    sync_queue_file = html_dir / "sync-queue.js"
+    if sync_queue_pattern.search(html) and sync_queue_file.exists():
+        sync_queue_content = sync_queue_file.read_text(encoding="utf-8")
+        sync_queue_replacement = f'<script type="module">\n{sync_queue_content}\n</script>'
+        html = sync_queue_pattern.sub(lambda _: sync_queue_replacement, html)
+
     output_dir = output_path.parent
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path.write_text(html, encoding="utf-8")
