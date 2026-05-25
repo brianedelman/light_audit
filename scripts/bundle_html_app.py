@@ -82,6 +82,17 @@ def bundle(html_dir: Path, output_path: Path) -> None:
         photo_store_replacement = f'<script type="module">\n{photo_store_content}\n</script>'
         html = photo_store_pattern.sub(lambda _: photo_store_replacement, html)
 
+    # --- compress.js ---
+    compress_pattern = re.compile(
+        r'<script\b[^>]*\bsrc=["\']\.?/?compress\.js["\'][^>]*>\s*</script>',
+        re.IGNORECASE,
+    )
+    compress_file = html_dir / "compress.js"
+    if compress_pattern.search(html) and compress_file.exists():
+        compress_content = compress_file.read_text(encoding="utf-8")
+        compress_replacement = f'<script type="module">\n{compress_content}\n</script>'
+        html = compress_pattern.sub(lambda _: compress_replacement, html)
+
     output_dir = output_path.parent
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path.write_text(html, encoding="utf-8")

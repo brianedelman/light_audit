@@ -12347,7 +12347,13 @@ function closePhotoLightbox() {
 // upload path is wired in (then full photos go to remote, not localStorage).
 
 // Compress file to a Blob (used by the IndexedDB blob-storage path).
+// Delegates to window.auditCompress.compressToTarget when available for
+// quality-tuned ~2MB output; falls back to a simple canvas resize.
 async function compressToBlob(file, maxDim = 1600, quality = 0.75) {
+  if (window.auditCompress) {
+    const result = await window.auditCompress.compressToTarget(file);
+    return result.blob;
+  }
   const dataUrl = await new Promise((res, rej) => {
     const r = new FileReader();
     r.onload = (e) => res(e.target.result);
