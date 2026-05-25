@@ -356,3 +356,22 @@ Started: 2026-05-24
   - `mimetypes.guess_type()` handles .js → `text/javascript`, .json → `application/json`, .png → `image/png` automatically on macOS/Linux
   - Use `path("audit/<path:asset_path>", pwa_asset)` for Django path converter to handle nested paths like `icons/icon-192.png`
 ---
+
+## 2026-05-25 - US-030
+- Created `html_app/storage.js`: ES module using raw IndexedDB API; two stores ('json' and 'blobs')
+- Exposes: getJSON, setJSON, putBlob, getBlob, listBlobs (with optional filter predicate), deleteBlob
+- Sets `window.auditStorage` for non-module scripts to access the functions
+- Created `html_app/storage.d.ts` with TypeScript type declarations for the module
+- Added `<script type="module" src="./storage.js"></script>` to `html_app/app.html` (after app.js)
+- Updated `scripts/bundle_html_app.py` to detect and inline storage.js as `<script type="module">` block
+- Added 2 bundler tests: storage.js inlining + absent-file no-error
+- Installed `fake-indexeddb` dev dep; 14 vitest tests in `frontend/src/__tests__/storage.test.ts`
+- Added `@html-app/*` alias to vitest.config.ts + tsconfig.app.json for cross-directory imports
+- All 158 backend + 27 frontend tests pass; ruff + tsc clean
+- **Learnings for future iterations:**
+  - `fake-indexeddb/auto` patches `globalThis.indexedDB` — import it before importing the storage module
+  - fake-indexeddb does not preserve `instanceof Blob` — test blob fields with `toBeDefined()` not `toBeInstanceOf(Blob)`
+  - Path alias `@html-app/*` in vitest.config.ts needs matching `paths` entry in tsconfig.app.json for tsc to resolve
+  - `.d.ts` declarations allow typed imports of plain JS files without `allowJs: true` in tsconfig
+  - storage.js inlined as `<script type="module">` (not plain `<script>`) so ES module `export` syntax is valid
+---
