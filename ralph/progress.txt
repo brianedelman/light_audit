@@ -238,3 +238,21 @@ Started: 2026-05-24
   - Ninja ModelSchema fields list that hits line length: split into 2 rows within the list
   - Audit API tests go in `light_audit/audit/test_api.py` (separate from test_models in tests.py)
 ---
+
+## 2026-05-24 - US-022
+- Added `client_uuid` UUIDField to Building model (null/unique/indexed) for building lookup by UUID
+- Created migrations 0012 (AuditVersion.client_uuid) + 0013 (Building.client_uuid)
+- Created `light_audit/audit/api/sync.py` with sync_router: POST /api/audits/sync
+- Schema: SyncRequest (building_uuid, client_uuid, base_version_uuid, payload) → SyncResponse (version_id, version_number, client_uuid, created)
+- Payload: nested floors → rooms → log_entries; stored in AuditVersion.source_payload
+- Idempotency: if client_uuid already exists in AuditVersion, returns existing version with created=False
+- Registered router in config/api.py at /audits/
+- 7 pytest tests: auth guard, create, stores payload, creates children (floors/rooms/log_entries), idempotent replay, no-uuid creates new each time, unknown building 404
+- All 108 backend tests pass; ruff clean
+- Files changed: models.py, migrations/0012+0013, audit/api/sync.py, test_sync_api.py, config/api.py
+- **Learnings for future iterations:**
+  - `import uuid as _uuid_mod  # noqa: TC003` suppresses false positive (uuid used at runtime for pydantic field validation)
+  - PLR2004 in tests: assign expected count to a variable (`expected_entries = 2`) before asserting
+  - `ninja.errors.HttpError(404, "message")` for 404 responses in ninja endpoints
+  - Sync tests go in separate file `test_sync_api.py` to keep test files focused
+---
