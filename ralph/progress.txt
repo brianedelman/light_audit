@@ -270,3 +270,21 @@ Started: 2026-05-24
   - `response=AuditVersionSchema | None` works in ninja for nullable responses (returns JSON null when queryset .first() returns None)
   - Push-to-ipad test: must call `version.refresh_from_db()` to see the saved status change
 ---
+
+## 2026-05-24 - US-024
+- Added `PhotoUploadStatus` TextChoices (uploading/uploaded/failed) and `upload_status` + `r2_upload_id` fields to Photo model
+- Created migration `0014_photo_upload_fields.py`
+- Created `light_audit/audit/api/media.py` with `media_router` at `/api/media/`:
+  - POST /multipart/start → creates Photo, calls boto3 create_multipart_upload, returns upload_id + storage_path
+  - POST /multipart/sign-part → generates presigned URL for a part via generate_presigned_url("upload_part", ...)
+  - POST /multipart/complete → calls complete_multipart_upload with part ETags, sets Photo.status=uploaded + public_url
+  - POST /multipart/abort → calls abort_multipart_upload, sets Photo.status=failed
+- Registered router in config/api.py at /media/
+- 8 pytest tests in test_media_api.py: auth guard, start creates Photo + calls R2, sign-part returns URL, complete updates Photo, abort marks failed, 404 cases — all with mocked boto3
+- All 127 backend tests pass; ruff clean
+- Files changed: models.py, migrations/0014, audit/api/media.py, test_media_api.py, config/api.py, ralph/prd.json
+- **Learnings for future iterations:**
+  - Mock boto3 via `patch("light_audit.audit.api.media._get_r2_client", return_value=mock_client)` — patch the local reference, not the boto3 module
+  - `generate_presigned_url("upload_part", ...)` is the operation name for multipart part signing in boto3
+  - Storage path pattern: `media/{building_pk}/{uuid4()}/{filename}` keeps objects organized by building
+---
