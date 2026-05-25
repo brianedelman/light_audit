@@ -530,8 +530,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 37,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Added building_count to ProjectSchema via resolve_building_count + Count annotation. ProjectsListPage uses useQuery + useNavigate. 4 frontend tests cover render, navigation, empty state, error state."
     },
     {
       "id": "US-038",

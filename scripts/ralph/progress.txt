@@ -1,3 +1,27 @@
 # Ralph Progress Log
 Started: Sun May 24 11:20:00 EDT 2026
 ---
+
+## Codebase Patterns
+- Frontend pages go in `frontend/src/pages/`; tests in `frontend/src/__tests__/`
+- Mock api module with `vi.mock('../lib/api')` and cast to typed mock for tests
+- Mock TanStack Router's `useNavigate` returning `vi.fn()` for navigation assertions
+- Use `makeWrapper()` pattern wrapping `QueryClientProvider` + `AuthProvider` for test renders
+- Backend docker-compose not available locally; backend tests require `just pytest` with Docker
+- Django Ninja schemas support `resolve_<field>` static methods for computed fields
+- Use `annotate()` on querysets to avoid N+1 for computed counts
+
+---
+
+## 2026-05-25 - US-037
+- Implemented projects list page at /projects route
+- Added building_count computed field to ProjectSchema with Count annotation
+- Created ProjectsListPage component with TanStack Query, table display, click-to-navigate
+- Added /projects and /projects/$projectId routes to router.tsx
+- Files changed: frontend/src/pages/ProjectsListPage.tsx (new), frontend/src/__tests__/projects-list.test.tsx (new), frontend/src/router.tsx, light_audit/audit/api/schema.py, light_audit/audit/api/views.py
+- **Learnings for future iterations:**
+  - ProjectSchema uses `resolve_building_count` static method + `annotate(building_count=Count("buildings"))` in list view
+  - Existing pages use simple useState for forms, not TanStack Query mutations (except AuthContext)
+  - Router uses flat route definitions with `createRoute()` + `rootRoute.addChildren()`
+  - Backend tests can't run without Docker/DB — only frontend typecheck + vitest available locally
+---
