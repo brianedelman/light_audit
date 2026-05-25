@@ -2,6 +2,19 @@ Ralph progress log — Light Audit Platform Phase 1
 Branch: ralph/phase-1
 Started: 2026-05-24
 
+## 2026-05-24 - US-027
+- Created `html_app/manifest.json`: name, short_name, start_url=/audit/, display=standalone, theme_color=#2563eb, background_color=#ffffff, icons 192+512
+- Injected iOS meta tags into `html_app/app.html`: `apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`, `apple-mobile-web-app-title`, two `apple-touch-icon` links, `<link rel="manifest">`
+- Created `html_app/icons/icon-192.png` and `icon-512.png` (solid blue placeholder PNGs generated via Pillow)
+- Updated `scripts/bundle_html_app.py` to copy `manifest.json` and `icons/` to output dir alongside `index.html`
+- Added 3 new tests: manifest copied, icons copied, no error when manifest absent
+- All 146 backend tests pass; ruff clean
+- Browser verification: manual check needed (no browser tool configured)
+- **Learnings for future iterations:**
+  - `shutil.copytree` requires dest dir to NOT exist — use `shutil.rmtree` first if it exists (re-runs of bundler)
+  - Placeholder PNG icons created via Pillow; for production use real branded icons
+---
+
 ## 2026-05-24 - US-026
 - Created `scripts/bundle_html_app.py`: detects `<link href="app.css">` and `<script src="./app.js">` in html_app/app.html; inlines both as `<style>` and `<script>` blocks; passes through unchanged if already inline
 - Created `scripts/test_bundle_html_app.py`: 8 tests covering split-file CSS inline, JS inline, output creation, content preservation, single-file passthrough, identical output, auto mkdir, and src-without-dot-slash
