@@ -2,6 +2,7 @@ import { createRouter, createRoute, createRootRoute, Outlet } from '@tanstack/re
 import LoginPage from './pages/LoginPage'
 import PasswordResetPage from './pages/PasswordResetPage'
 import PasswordResetConfirmPage from './pages/PasswordResetConfirmPage'
+import ProjectsListPage from './pages/ProjectsListPage'
 
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
@@ -31,11 +32,25 @@ const passwordResetConfirmRoute = createRoute({
   component: PasswordResetConfirmPage,
 })
 
+const projectsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/projects',
+  component: ProjectsListPage,
+})
+
+const projectDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/projects/$projectId',
+  component: () => <div>Project Detail (coming soon)</div>,
+})
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
   passwordResetRoute,
   passwordResetConfirmRoute,
+  projectsRoute,
+  projectDetailRoute,
 ])
 
 export const router = createRouter({ routeTree })

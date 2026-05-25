@@ -7,11 +7,17 @@ from light_audit.audit.models import Project
 
 
 class ProjectSchema(ModelSchema):
+    building_count: int = 0
+
     class Meta:
         model = Project
         fields = [
             "id", "name", "client", "project_type", "status", "created", "modified",
         ]
+
+    @staticmethod
+    def resolve_building_count(obj: Project) -> int:
+        return obj.buildings.count()
 
 
 class ProjectCreateSchema(Schema):

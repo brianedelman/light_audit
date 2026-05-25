@@ -1,3 +1,4 @@
+from django.db.models import Count
 from django.shortcuts import get_object_or_404
 from ninja import Router
 from ninja import Schema
@@ -22,7 +23,7 @@ audit_versions_router = Router(tags=["audit-versions"])
 
 @projects_router.get("/", response=list[ProjectSchema])
 def list_projects(request):
-    return Project.objects.all()
+    return Project.objects.annotate(building_count=Count("buildings")).all()
 
 
 @projects_router.post("/", response=ProjectSchema)
