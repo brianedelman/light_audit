@@ -394,3 +394,25 @@ Started: 2026-05-24
   - fake-indexeddb reset: call `indexedDB.deleteDatabase('auditDB')` in afterEach to fully clear state between tests
   - _cache must also be cleared manually in tests (it's a module-level Map that persists across test cases)
 ---
+
+## 2026-05-25 - US-032
+- Created `html_app/photo-store.js`: ES module with testable capture/retrieval helpers
+  - `capturePhotoBlob(file, key, meta, storage, compressToBlob)` → stores Blob in IndexedDB, returns blob ID
+  - `resolvePhotoSrc(val, storage)` → resolves blob IDs to object URLs (data: URLs pass through)
+  - `migratePhotosToBlobs(roomPhotos, storage)` → converts base64 data URLs to blobs in-place
+  - `blobId(uuid)`, `isBlobId(val)` helpers; `BLOB_PREFIX = 'audit-blob-'`
+- Created `html_app/photo-store.d.ts` with TypeScript type declarations
+- Added `compressToBlob(file)` function to `html_app/app.js` (returns Blob not data URL)
+- Modified all 4 capture handlers in app.js to use `window.photoStore.capturePhotoBlob()` with data URL fallback
+- Made `renderLightbox()` async; resolves blob IDs via `window.photoStore.resolvePhotoSrc()`
+- Added migration call in `_bootApp()` after loadRoomPhotos() (async, background)
+- Added `<script type="module" src="./photo-store.js">` to app.html; bundler inlines it
+- 14 vitest tests in `frontend/src/__tests__/photo-store.test.ts`
+- All 158 backend + 51 frontend tests pass; tsc + ruff clean
+- Browser verification: manual check needed (no browser tool configured)
+- **Learnings for future iterations:**
+  - `URL.createObjectURL` throws if passed a plain Object (not native Blob) — wrap in try/catch for fake-indexeddb compat
+  - Modules (storage.js, photo-store.js) run BEFORE DOMContentLoaded in modern browsers (deferred scripts order guaranteed) — so `window.photoStore` IS available when `_bootApp()` runs
+  - Migration in `_bootApp()` uses `fetch(dataUrl)` to convert base64 → Blob; this works since data: URLs are fetchable
+  - `capturePhotoBlob` takes `compressToBlob` as explicit param to enable easy test mocking
+---
