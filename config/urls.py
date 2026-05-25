@@ -7,6 +7,9 @@ from django.urls import path
 from django.views import defaults as default_views
 from django.views.generic import TemplateView
 
+from light_audit.audit.views import pwa_asset
+from light_audit.audit.views import pwa_index
+
 from .api import api
 
 urlpatterns = [
@@ -16,6 +19,9 @@ urlpatterns = [
         TemplateView.as_view(template_name="pages/about.html"),
         name="about",
     ),
+    # PWA audit tool
+    path("audit/", pwa_index, name="pwa-index"),
+    path("audit/<path:asset_path>", pwa_asset, name="pwa-asset"),
     # Django Admin, use {% url 'admin:index' %}
     path(settings.ADMIN_URL, admin.site.urls),
     # User management
