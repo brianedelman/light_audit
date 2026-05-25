@@ -222,3 +222,19 @@ Started: 2026-05-24
   - Mock `@tanstack/react-router` in tests: `vi.importActual` + spread + override `useNavigate`, `useParams`
   - Cast mocked axios via `as unknown as { get: Mock, post: Mock }` to satisfy TS
 ---
+
+## 2026-05-24 - US-021
+- Created `light_audit/audit/api/` package with schema.py + views.py
+- ProjectSchema, BuildingSchema, AuditVersionSchema as ModelSchema; *CreateSchema for POST
+- Registered 3 routers in config/api.py: /api/projects/, /api/buildings/, /api/audit-versions/
+- Nested routes: /api/projects/{id}/buildings/, /api/buildings/{id}/audit-versions/
+- Auth inherited from global NinjaAPI SessionAuth — all endpoints require login
+- 13 pytest tests in light_audit/audit/test_api.py covering auth guards, list, retrieve, create
+- All 101 backend tests pass, ruff clean
+- Files changed: light_audit/audit/api/__init__.py, schema.py, views.py; light_audit/audit/test_api.py; config/api.py
+- **Learnings for future iterations:**
+  - `BuildingCreateSchema` includes project_id in body; view pops it before `**payload` spread to `Building.objects.create(project=project, **payload)`
+  - Use `HTTPStatus.OK / UNAUTHORIZED` in tests to satisfy PLR2004 (no magic 200/401)
+  - Ninja ModelSchema fields list that hits line length: split into 2 rows within the list
+  - Audit API tests go in `light_audit/audit/test_api.py` (separate from test_models in tests.py)
+---
