@@ -2,6 +2,18 @@ Ralph progress log — Light Audit Platform Phase 1
 Branch: ralph/phase-1
 Started: 2026-05-24
 
+## 2026-05-24 - US-028
+- Created `html_app/sw.js`: cache-first service worker with `CACHE_VERSION = "v1"` and `CACHE_NAME = "audit-pwa-v1"`; precaches index.html, manifest.json, icons; cleans old cache versions on activate; caches CDN assets on network fetch
+- Added SW registration inline `<script>` to `html_app/app.html` (after app.js, checks `"serviceWorker" in navigator`)
+- Updated `scripts/bundle_html_app.py` to copy `sw.js` to output dir
+- Added `test_sw_copied` test
+- All 147 backend tests pass; ruff clean
+- Browser/Lighthouse verification: manual check needed
+- **Learnings for future iterations:**
+  - SW `CACHE_VERSION` constant controls cache invalidation — bump it to force cache refresh in production
+  - SW registration uses `window.addEventListener("load", ...)` to avoid blocking initial page paint
+---
+
 ## 2026-05-24 - US-027
 - Created `html_app/manifest.json`: name, short_name, start_url=/audit/, display=standalone, theme_color=#2563eb, background_color=#ffffff, icons 192+512
 - Injected iOS meta tags into `html_app/app.html`: `apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`, `apple-mobile-web-app-title`, two `apple-touch-icon` links, `<link rel="manifest">`
