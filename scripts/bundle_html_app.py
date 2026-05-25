@@ -48,6 +48,17 @@ def bundle(html_dir: Path, output_path: Path) -> None:
         js_replacement = f"<script>\n{js_content}\n</script>"
         html = js_script_pattern.sub(lambda _: js_replacement, html)
 
+    # --- storage-shim.js ---
+    shim_pattern = re.compile(
+        r'<script\b[^>]*\bsrc=["\']\.?/?storage-shim\.js["\'][^>]*>\s*</script>',
+        re.IGNORECASE,
+    )
+    shim_file = html_dir / "storage-shim.js"
+    if shim_pattern.search(html) and shim_file.exists():
+        shim_content = shim_file.read_text(encoding="utf-8")
+        shim_replacement = f'<script type="module">\n{shim_content}\n</script>'
+        html = shim_pattern.sub(lambda _: shim_replacement, html)
+
     # --- storage.js ---
     # Match <script type="module" src="./storage.js"> or <script src="./storage.js">
     storage_pattern = re.compile(
