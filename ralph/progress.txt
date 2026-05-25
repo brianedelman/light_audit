@@ -2,6 +2,18 @@ Ralph progress log — Light Audit Platform Phase 1
 Branch: ralph/phase-1
 Started: 2026-05-24
 
+## 2026-05-24 - US-026
+- Created `scripts/bundle_html_app.py`: detects `<link href="app.css">` and `<script src="./app.js">` in html_app/app.html; inlines both as `<style>` and `<script>` blocks; passes through unchanged if already inline
+- Created `scripts/test_bundle_html_app.py`: 8 tests covering split-file CSS inline, JS inline, output creation, content preservation, single-file passthrough, identical output, auto mkdir, and src-without-dot-slash
+- Added `scripts/__init__.py` to make scripts a Python package (required by pytest + INP001)
+- Added `html-app-build` justfile recipe
+- All 143 backend tests pass; ruff clean
+- **Learnings for future iterations:**
+  - `re.sub` interprets backslash sequences in the replacement string — JS content has `\u` escapes that cause PatternError; fix: `lambda _: replacement` bypasses re's template parsing
+  - `scripts/` needs `__init__.py` for ruff INP001 (implicit namespace package) and pytest import resolution
+  - TC003 rule: standard library Path used only as type annotation should be in `TYPE_CHECKING` block when `from __future__ import annotations` is present
+---
+
 ## 2026-05-25 - US-025
 - Created `light_audit/audit/tasks.py` with `generate_thumbnail(photo_id)` shared Celery task
 - Task downloads original from R2 via boto3, resizes with Pillow (300x300 thumbnail), uploads JPEG back to R2, updates Photo.thumbnail_url
@@ -33,6 +45,8 @@ Started: 2026-05-24
 - Frontend test script: `npm run test` runs `vitest run`; `npm run build` runs `tsc -b && vite build`
 - `.gitignore` has global `lib/` rule — files in `frontend/src/lib/` require `git add -f`
 - Custom User model: email-based (no username field). Create with `User.objects.create_user(email=..., password=...)`
+- `scripts/` is a Python package (has `__init__.py`) — required by ruff INP001 and pytest `--import-mode=importlib`
+- `re.sub` interprets backslash sequences in the replacement string — use `lambda _: replacement` for HTML/JS content that contains `\u` or other escapes
 
 ---
 
