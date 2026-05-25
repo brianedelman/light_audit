@@ -3,6 +3,7 @@ import LoginPage from './pages/LoginPage'
 import PasswordResetPage from './pages/PasswordResetPage'
 import PasswordResetConfirmPage from './pages/PasswordResetConfirmPage'
 import ProjectsListPage from './pages/ProjectsListPage'
+import ProjectDetailPage from './pages/ProjectDetailPage'
 
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
@@ -41,7 +42,7 @@ const projectsRoute = createRoute({
 const projectDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/projects/$projectId',
-  component: () => <div>Project Detail (coming soon)</div>,
+  component: ProjectDetailPage,
 })
 
 const routeTree = rootRoute.addChildren([

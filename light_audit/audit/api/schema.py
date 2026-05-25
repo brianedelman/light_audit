@@ -45,9 +45,17 @@ class BuildingCreateSchema(Schema):
 
 
 class AuditVersionSchema(ModelSchema):
+    created_by_name: str = ""
+
     class Meta:
         model = AuditVersion
         fields = [
             "id", "version_number", "label", "status",
             "is_current", "created", "modified",
         ]
+
+    @staticmethod
+    def resolve_created_by_name(obj: AuditVersion) -> str:
+        if obj.created_by:
+            return obj.created_by.get_full_name() or obj.created_by.email
+        return ""
