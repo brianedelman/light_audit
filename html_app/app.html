@@ -9426,6 +9426,36 @@
     <script type="module" src="./compress.js"></script>
     <script type="module" src="./video-cap.js"></script>
     <script type="module" src="./sync-queue.js"></script>
+    <script type="module" src="./sync-drain.js"></script>
+    <script>
+      // --- Sync status indicator ---
+      (function () {
+        var badge = document.createElement("div");
+        badge.id = "sync-status-badge";
+        badge.style.cssText =
+          "display:none;position:fixed;bottom:12px;right:12px;background:#2563eb;" +
+          "color:#fff;padding:6px 14px;border-radius:20px;font-size:13px;" +
+          "z-index:9999;box-shadow:0 2px 8px rgba(0,0,0,.25);pointer-events:none;";
+        document.body.appendChild(badge);
+
+        document.addEventListener("sync-status", function (e) {
+          var d = e.detail;
+          if (!d || d.queueLength === 0) {
+            badge.style.display = "none";
+            return;
+          }
+          badge.style.display = "block";
+          badge.textContent = d.active
+            ? "Syncing… (" + d.queueLength + " pending)"
+            : d.queueLength + " pending upload" + (d.queueLength > 1 ? "s" : "");
+        });
+      })();
+
+      // Auto-start sync drain when PWA boots
+      if (window.syncDrain) {
+        window.syncDrain.startDrain({ initialDelayMs: 3000 });
+      }
+    </script>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {

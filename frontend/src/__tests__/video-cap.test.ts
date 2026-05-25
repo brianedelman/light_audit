@@ -101,7 +101,7 @@ describe('checkVideoDuration', () => {
 // ---------------------------------------------------------------------------
 
 describe('captureWithPolicy', () => {
-  const mockCompress = vi.fn().mockImplementation((f: File) =>
+  const mockCompress = vi.fn().mockImplementation((_f: File) =>
     Promise.resolve(new Blob(['compressed'], { type: 'image/jpeg' })),
   );
 

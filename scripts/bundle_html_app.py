@@ -17,6 +17,22 @@ import sys
 from pathlib import Path
 
 
+def _inline_module(html: str, html_dir: Path, filename: str) -> str:
+    """Inline a <script src="./filename"> as a <script type="module"> block."""
+    pattern = re.compile(
+        rf'<script\b[^>]*\bsrc=["\']\.?/?{re.escape(filename)}["\'][^>]*>\s*</script>',
+        re.IGNORECASE,
+    )
+    src_file = html_dir / filename
+    if pattern.search(html) and src_file.exists():
+        content = src_file.read_text(encoding="utf-8")
+        replacement = (
+            f'<script type="module">\n{content}\n</script>'
+        )
+        html = pattern.sub(lambda _: replacement, html)
+    return html
+
+
 def bundle(html_dir: Path, output_path: Path) -> None:
     html_file = html_dir / "app.html"
     css_file = html_dir / "app.css"
@@ -25,95 +41,37 @@ def bundle(html_dir: Path, output_path: Path) -> None:
     html = html_file.read_text(encoding="utf-8")
 
     # --- CSS ---
-    # Match <link ... href="app.css" ...> (any attributes, any order)
     css_link_pattern = re.compile(
         r'<link\b[^>]*\bhref=["\']app\.css["\'][^>]*/?>',
         re.IGNORECASE,
     )
     if css_link_pattern.search(html):
-        # Split-file: inline the CSS — use lambda to avoid re backslash interpretation
         css_content = css_file.read_text(encoding="utf-8")
         css_replacement = f"<style>\n{css_content}\n</style>"
         html = css_link_pattern.sub(lambda _: css_replacement, html)
 
-    # --- JS ---
-    # Match <script src="./app.js"> or <script src="app.js"> (with optional attrs)
+    # --- JS (app.js — plain script, not module) ---
     js_script_pattern = re.compile(
         r'<script\b[^>]*\bsrc=["\']\.?/?app\.js["\'][^>]*>\s*</script>',
         re.IGNORECASE,
     )
     if js_script_pattern.search(html):
-        # Split-file: inline the JS — use lambda to avoid re backslash interpretation
         js_content = js_file.read_text(encoding="utf-8")
         js_replacement = f"<script>\n{js_content}\n</script>"
         html = js_script_pattern.sub(lambda _: js_replacement, html)
 
-    # --- storage-shim.js ---
-    shim_pattern = re.compile(
-        r'<script\b[^>]*\bsrc=["\']\.?/?storage-shim\.js["\'][^>]*>\s*</script>',
-        re.IGNORECASE,
-    )
-    shim_file = html_dir / "storage-shim.js"
-    if shim_pattern.search(html) and shim_file.exists():
-        shim_content = shim_file.read_text(encoding="utf-8")
-        shim_replacement = f'<script type="module">\n{shim_content}\n</script>'
-        html = shim_pattern.sub(lambda _: shim_replacement, html)
-
-    # --- storage.js ---
-    # Match <script type="module" src="./storage.js"> or <script src="./storage.js">
-    storage_pattern = re.compile(
-        r'<script\b[^>]*\bsrc=["\']\.?/?storage\.js["\'][^>]*>\s*</script>',
-        re.IGNORECASE,
-    )
-    storage_file = html_dir / "storage.js"
-    if storage_pattern.search(html) and storage_file.exists():
-        storage_content = storage_file.read_text(encoding="utf-8")
-        storage_replacement = f'<script type="module">\n{storage_content}\n</script>'
-        html = storage_pattern.sub(lambda _: storage_replacement, html)
-
-    # --- photo-store.js ---
-    photo_store_pattern = re.compile(
-        r'<script\b[^>]*\bsrc=["\']\.?/?photo-store\.js["\'][^>]*>\s*</script>',
-        re.IGNORECASE,
-    )
-    photo_store_file = html_dir / "photo-store.js"
-    if photo_store_pattern.search(html) and photo_store_file.exists():
-        photo_store_content = photo_store_file.read_text(encoding="utf-8")
-        photo_store_replacement = f'<script type="module">\n{photo_store_content}\n</script>'
-        html = photo_store_pattern.sub(lambda _: photo_store_replacement, html)
-
-    # --- compress.js ---
-    compress_pattern = re.compile(
-        r'<script\b[^>]*\bsrc=["\']\.?/?compress\.js["\'][^>]*>\s*</script>',
-        re.IGNORECASE,
-    )
-    compress_file = html_dir / "compress.js"
-    if compress_pattern.search(html) and compress_file.exists():
-        compress_content = compress_file.read_text(encoding="utf-8")
-        compress_replacement = f'<script type="module">\n{compress_content}\n</script>'
-        html = compress_pattern.sub(lambda _: compress_replacement, html)
-
-    # --- video-cap.js ---
-    video_cap_pattern = re.compile(
-        r'<script\b[^>]*\bsrc=["\']\.?/?video-cap\.js["\'][^>]*>\s*</script>',
-        re.IGNORECASE,
-    )
-    video_cap_file = html_dir / "video-cap.js"
-    if video_cap_pattern.search(html) and video_cap_file.exists():
-        video_cap_content = video_cap_file.read_text(encoding="utf-8")
-        video_cap_replacement = f'<script type="module">\n{video_cap_content}\n</script>'
-        html = video_cap_pattern.sub(lambda _: video_cap_replacement, html)
-
-    # --- sync-queue.js ---
-    sync_queue_pattern = re.compile(
-        r'<script\b[^>]*\bsrc=["\']\.?/?sync-queue\.js["\'][^>]*>\s*</script>',
-        re.IGNORECASE,
-    )
-    sync_queue_file = html_dir / "sync-queue.js"
-    if sync_queue_pattern.search(html) and sync_queue_file.exists():
-        sync_queue_content = sync_queue_file.read_text(encoding="utf-8")
-        sync_queue_replacement = f'<script type="module">\n{sync_queue_content}\n</script>'
-        html = sync_queue_pattern.sub(lambda _: sync_queue_replacement, html)
+    # --- ES module scripts ---
+    module_files = [
+        "storage-shim.js",
+        "storage.js",
+        "photo-store.js",
+        "compress.js",
+        "video-cap.js",
+        "sync-queue.js",
+        "sync-drain.js",
+    ]
+    for mod in module_files:
+        html = _inline_module(html, html_dir, mod)
 
     output_dir = output_path.parent
     output_dir.mkdir(parents=True, exist_ok=True)
