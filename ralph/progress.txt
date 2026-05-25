@@ -256,3 +256,17 @@ Started: 2026-05-24
   - `ninja.errors.HttpError(404, "message")` for 404 responses in ninja endpoints
   - Sync tests go in separate file `test_sync_api.py` to keep test files focused
 ---
+
+## 2026-05-24 - US-023
+- Added `GET /api/audits/{version_id}` to sync.py — returns metadata + source_payload for PWA hydration
+- Added `GET /api/projects/{project_id}/audits/` to projects_router — lists all AuditVersions for a project
+- Added `POST /api/audit-versions/{version_id}/push-to-ipad/` to audit_versions_router — sets status to `published_to_ipad`
+- Added `GET /api/buildings/{building_id}/available-version/` to buildings_router — returns latest published_to_ipad version or null
+- 12 new pytest tests in test_sync_pull_api.py covering auth guards, happy paths, 404s for all 4 endpoints
+- All 120 backend tests pass; ruff clean
+- Files changed: audit/api/sync.py, audit/api/views.py, audit/test_sync_pull_api.py, ralph/prd.json
+- **Learnings for future iterations:**
+  - `AuditVersionStatus` imported from models — use `.PUBLISHED_TO_IPAD` value ("published_to_ipad") not a string literal
+  - `response=AuditVersionSchema | None` works in ninja for nullable responses (returns JSON null when queryset .first() returns None)
+  - Push-to-ipad test: must call `version.refresh_from_db()` to see the saved status change
+---
