@@ -1,9 +1,12 @@
-"""Sync API: POST /api/audits/sync — PWA pushes full audit payload."""
+"""Sync API: POST /api/audits/sync — PWA pushes full audit payload.
+GET /api/audits/{version_id} — PWA pulls a version snapshot.
+"""
 
 import uuid as _uuid_mod  # noqa: TC003
 from typing import Any
 
 from django.db import transaction
+from django.shortcuts import get_object_or_404
 from ninja import Router
 from ninja import Schema
 from ninja.errors import HttpError
@@ -66,6 +69,15 @@ class SyncResponse(Schema):
     created: bool
 
 
+class AuditVersionPullResponse(Schema):
+    version_id: int
+    version_number: int
+    label: str
+    status: str
+    client_uuid: _uuid_mod.UUID | None
+    payload: dict[str, Any]
+
+
 # ---------- endpoint ----------
 
 @sync_router.post("/sync", response=SyncResponse)
@@ -105,6 +117,20 @@ def sync_audit(request, data: SyncRequest):
         version_number=version.version_number,
         client_uuid=version.client_uuid,
         created=True,
+    )
+
+
+@sync_router.get("/{version_id}", response=AuditVersionPullResponse)
+def pull_audit_version(request, version_id: int):
+    """Return full stored payload for a version (for PWA hydration)."""
+    version = get_object_or_404(AuditVersion, pk=version_id)
+    return AuditVersionPullResponse(
+        version_id=version.pk,
+        version_number=version.version_number,
+        label=version.label,
+        status=version.status,
+        client_uuid=version.client_uuid,
+        payload=version.source_payload,
     )
 
 

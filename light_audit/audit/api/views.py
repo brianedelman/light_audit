@@ -1,5 +1,7 @@
 from django.shortcuts import get_object_or_404
 from ninja import Router
+from ninja import Schema
+from ninja.errors import HttpError
 
 from light_audit.audit.api.schema import AuditVersionSchema
 from light_audit.audit.api.schema import BuildingCreateSchema
@@ -7,6 +9,7 @@ from light_audit.audit.api.schema import BuildingSchema
 from light_audit.audit.api.schema import ProjectCreateSchema
 from light_audit.audit.api.schema import ProjectSchema
 from light_audit.audit.models import AuditVersion
+from light_audit.audit.models import AuditVersionStatus
 from light_audit.audit.models import Building
 from light_audit.audit.models import Project
 
@@ -38,6 +41,12 @@ def list_project_buildings(request, project_id: int):
     return project.buildings.all()
 
 
+@projects_router.get("/{project_id}/audits/", response=list[AuditVersionSchema])
+def list_project_audits(request, project_id: int):
+    project = get_object_or_404(Project, pk=project_id)
+    return AuditVersion.objects.filter(building__project=project)
+
+
 # --- Buildings ---
 
 @buildings_router.get("/", response=list[BuildingSchema])
@@ -66,6 +75,21 @@ def list_building_audit_versions(request, building_id: int):
     return building.audit_versions.all()
 
 
+@buildings_router.get(
+    "/{building_id}/available-version/", response=AuditVersionSchema | None,
+)
+def get_available_version(request, building_id: int):
+    """Return the latest published_to_ipad version for a building, if one exists."""
+    building = get_object_or_404(Building, pk=building_id)
+    return (
+        building.audit_versions.filter(
+            status=AuditVersionStatus.PUBLISHED_TO_IPAD,
+        )
+        .order_by("-version_number")
+        .first()
+    )
+
+
 # --- Audit Versions ---
 
 @audit_versions_router.get("/", response=list[AuditVersionSchema])
@@ -76,3 +100,22 @@ def list_audit_versions(request):
 @audit_versions_router.get("/{version_id}/", response=AuditVersionSchema)
 def retrieve_audit_version(request, version_id: int):
     return get_object_or_404(AuditVersion, pk=version_id)
+
+
+class PushToIpadResponse(Schema):
+    version_id: int
+    status: str
+
+
+@audit_versions_router.post(
+    "/{version_id}/push-to-ipad/", response=PushToIpadResponse,
+)
+def push_to_ipad(request, version_id: int):
+    """Set audit version status to published_to_ipad."""
+    version = get_object_or_404(AuditVersion, pk=version_id)
+    if version.status == AuditVersionStatus.PUBLISHED:
+        msg = "Cannot push a published version to iPad."
+        raise HttpError(409, msg)
+    version.status = AuditVersionStatus.PUBLISHED_TO_IPAD
+    version.save()
+    return PushToIpadResponse(version_id=version.pk, status=version.status)
