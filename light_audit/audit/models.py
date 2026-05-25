@@ -58,6 +58,7 @@ class Building(TimeStampedModel):
         on_delete=models.PROTECT,
         related_name="buildings",
     )
+    client_uuid = models.UUIDField(null=True, blank=True, unique=True, db_index=True)
     name = models.CharField(max_length=255)
     address = models.CharField(max_length=500, blank=True)
     auditor = models.CharField(max_length=255, blank=True)
@@ -104,6 +105,7 @@ class AuditVersion(TimeStampedModel):
     )
     source_payload = models.JSONField(default=dict, blank=True)
     is_current = models.BooleanField(default=True)
+    client_uuid = models.UUIDField(null=True, blank=True, unique=True, db_index=True)
 
     class Meta:
         ordering = ["-version_number"]
