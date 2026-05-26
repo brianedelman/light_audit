@@ -67,6 +67,7 @@ describe('ProjectDetailPage', () => {
       if (url.match(/\/buildings\/\d+\/audit-versions\//)) return Promise.resolve({ data: VERSIONS })
       return Promise.reject(new Error(`unmocked GET ${url}`))
     })
+    mockApi.post.mockResolvedValue({ data: {} })
   })
 
   it('renders project metadata and buildings list', async () => {
@@ -133,5 +134,33 @@ describe('ProjectDetailPage', () => {
 
     render(<ProjectDetailPage />, { wrapper: makeWrapper() })
     expect(await screen.findByText('No buildings found.')).toBeInTheDocument()
+  })
+
+  it('push-to-iPad button calls correct API endpoint', async () => {
+    render(<ProjectDetailPage />, { wrapper: makeWrapper() })
+
+    const buildingRow = await screen.findByTestId('building-row-10')
+    fireEvent.click(buildingRow)
+
+    const pushBtn = await screen.findByTestId('push-ipad-100')
+    fireEvent.click(pushBtn)
+
+    await waitFor(() => {
+      expect(mockApi.post).toHaveBeenCalledWith('/audit-versions/100/push-to-ipad/')
+    })
+  })
+
+  it('duplicate button calls correct API endpoint', async () => {
+    render(<ProjectDetailPage />, { wrapper: makeWrapper() })
+
+    const buildingRow = await screen.findByTestId('building-row-10')
+    fireEvent.click(buildingRow)
+
+    const dupBtn = await screen.findByTestId('duplicate-100')
+    fireEvent.click(dupBtn)
+
+    await waitFor(() => {
+      expect(mockApi.post).toHaveBeenCalledWith('/audit-versions/100/duplicate/')
+    })
   })
 })

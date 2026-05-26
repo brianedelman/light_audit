@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams } from '@tanstack/react-router'
 import {
   createColumnHelper,
@@ -43,28 +43,71 @@ interface AuditVersion {
   modified: string
 }
 
+function ActionButtons({ version, buildingId }: { version: AuditVersion; buildingId: number }) {
+  const queryClient = useQueryClient()
+
+  const pushMutation = useMutation({
+    mutationFn: () => api.post(`/audit-versions/${version.id}/push-to-ipad/`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['building-versions', buildingId] }),
+  })
+
+  const duplicateMutation = useMutation({
+    mutationFn: () => api.post(`/audit-versions/${version.id}/duplicate/`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['building-versions', buildingId] }),
+  })
+
+  return (
+    <div className="flex gap-2">
+      <button
+        onClick={() => pushMutation.mutate()}
+        disabled={pushMutation.isPending || version.status === 'published_to_ipad'}
+        className="rounded bg-blue-600 px-2 py-0.5 text-xs text-white hover:bg-blue-700 disabled:opacity-50"
+        data-testid={`push-ipad-${version.id}`}
+      >
+        {pushMutation.isPending ? 'Pushing…' : 'Push to iPad'}
+      </button>
+      <button
+        onClick={() => duplicateMutation.mutate()}
+        disabled={duplicateMutation.isPending}
+        className="rounded bg-gray-200 px-2 py-0.5 text-xs hover:bg-gray-300 disabled:opacity-50"
+        data-testid={`duplicate-${version.id}`}
+      >
+        {duplicateMutation.isPending ? 'Duplicating…' : 'Duplicate'}
+      </button>
+    </div>
+  )
+}
+
 const columnHelper = createColumnHelper<AuditVersion>()
 
-const columns = [
-  columnHelper.accessor('version_number', { header: '#', size: 60 }),
-  columnHelper.accessor('label', { header: 'Label' }),
-  columnHelper.accessor('status', {
-    header: 'Status',
-    cell: (info) => (
-      <span className="rounded bg-gray-100 px-2 py-0.5 text-xs capitalize">
-        {info.getValue().replace(/_/g, ' ')}
-      </span>
-    ),
-  }),
-  columnHelper.accessor('created_by_name', { header: 'Created By' }),
-  columnHelper.accessor('created', {
-    header: 'Created',
-    cell: (info) => new Date(info.getValue()).toLocaleDateString(),
-  }),
-]
+function makeColumns(buildingId: number) {
+  return [
+    columnHelper.accessor('version_number', { header: '#', size: 60 }),
+    columnHelper.accessor('label', { header: 'Label' }),
+    columnHelper.accessor('status', {
+      header: 'Status',
+      cell: (info) => (
+        <span className="rounded bg-gray-100 px-2 py-0.5 text-xs capitalize">
+          {info.getValue().replace(/_/g, ' ')}
+        </span>
+      ),
+    }),
+    columnHelper.accessor('created_by_name', { header: 'Created By' }),
+    columnHelper.accessor('created', {
+      header: 'Created',
+      cell: (info) => new Date(info.getValue()).toLocaleDateString(),
+    }),
+    columnHelper.display({
+      id: 'actions',
+      header: 'Actions',
+      cell: (info) => <ActionButtons version={info.row.original} buildingId={buildingId} />,
+    }),
+  ]
+}
 
 function BuildingVersionsTable({ buildingId }: { buildingId: number }) {
   const [sorting, setSorting] = useState<SortingState>([])
+  const columns = makeColumns(buildingId)
 
   const { data: versions, isLoading } = useQuery<AuditVersion[]>({
     queryKey: ['building-versions', buildingId],

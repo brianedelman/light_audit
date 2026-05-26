@@ -120,3 +120,21 @@ def push_to_ipad(request, version_id: int):
     version.status = AuditVersionStatus.PUBLISHED_TO_IPAD
     version.save()
     return PushToIpadResponse(version_id=version.pk, status=version.status)
+
+
+@audit_versions_router.post(
+    "/{version_id}/duplicate/", response=AuditVersionSchema,
+)
+def duplicate_audit_version(request, version_id: int):
+    """Create a new draft version copied from an existing version."""
+    source = get_object_or_404(AuditVersion, pk=version_id)
+    label = f"Copy of {source.label}" if source.label else f"Copy of v{source.version_number}"
+    new_version = AuditVersion.objects.create(
+        building=source.building,
+        created_by=request.user,
+        label=label,
+        status=AuditVersionStatus.DRAFT,
+        source_payload=source.source_payload,
+        is_current=False,
+    )
+    return new_version
