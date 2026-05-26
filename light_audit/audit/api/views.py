@@ -9,6 +9,7 @@ from light_audit.audit.api.schema import BuildingCreateSchema
 from light_audit.audit.api.schema import BuildingSchema
 from light_audit.audit.api.schema import FloorWithRoomsSchema
 from light_audit.audit.api.schema import LogEntrySchema
+from light_audit.audit.api.schema import PhotoSchema
 from light_audit.audit.api.schema import ProjectCreateSchema
 from light_audit.audit.api.schema import ProjectSchema
 from light_audit.audit.api.schema import RoomSchema
@@ -17,6 +18,8 @@ from light_audit.audit.models import AuditVersionStatus
 from light_audit.audit.models import Building
 from light_audit.audit.models import Floor
 from light_audit.audit.models import LogEntry
+from light_audit.audit.models import Photo
+from light_audit.audit.models import PhotoUploadStatus
 from light_audit.audit.models import Project
 from light_audit.audit.models import Room
 
@@ -145,6 +148,14 @@ def retrieve_version_room(request, version_id: int, room_id: int):
 def list_room_log_entries(request, version_id: int, room_id: int):
     get_object_or_404(Room, pk=room_id, audit_version_id=version_id)
     return LogEntry.objects.filter(room_id=room_id)
+
+
+@audit_versions_router.get(
+    "/{version_id}/rooms/{room_id}/photos/", response=list[PhotoSchema],
+)
+def list_room_photos(request, version_id: int, room_id: int):
+    get_object_or_404(Room, pk=room_id, audit_version_id=version_id)
+    return Photo.objects.filter(room_id=room_id, upload_status=PhotoUploadStatus.UPLOADED)
 
 
 @audit_versions_router.post(

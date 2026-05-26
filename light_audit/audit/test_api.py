@@ -5,7 +5,11 @@ from django.contrib.auth import get_user_model
 
 from light_audit.audit.models import AuditVersion
 from light_audit.audit.models import Building
+from light_audit.audit.models import Floor
+from light_audit.audit.models import Photo
+from light_audit.audit.models import PhotoUploadStatus
 from light_audit.audit.models import Project
+from light_audit.audit.models import Room
 
 User = get_user_model()
 
@@ -148,3 +152,65 @@ def test_retrieve_audit_version(client, user, audit_version):
     response = client.get(f"/api/audit-versions/{audit_version.pk}/")
     assert response.status_code == HTTPStatus.OK
     assert response.json()["version_number"] == 1
+
+
+# ---- Room photos ----
+
+@pytest.fixture
+def floor(db, building, audit_version):
+    return Floor.objects.create(building=building, audit_version=audit_version, name="Floor 1", level=1)
+
+
+@pytest.fixture
+def room(db, audit_version, floor):
+    return Room.objects.create(floor=floor, audit_version=audit_version, name="Room A")
+
+
+@pytest.fixture
+def uploaded_photo(db, building, room):
+    return Photo.objects.create(
+        building=building,
+        room=room,
+        photo_type="fixture",
+        public_url="https://example.com/photo.jpg",
+        thumbnail_url="https://example.com/thumb.jpg",
+        upload_status=PhotoUploadStatus.UPLOADED,
+    )
+
+
+@pytest.fixture
+def uploading_photo(db, building, room):
+    return Photo.objects.create(
+        building=building,
+        room=room,
+        photo_type="switch",
+        public_url="",
+        upload_status=PhotoUploadStatus.UPLOADING,
+    )
+
+
+@pytest.mark.django_db
+def test_list_room_photos_returns_uploaded(client, user, audit_version, room, uploaded_photo, uploading_photo):
+    client.force_login(user)
+    url = f"/api/audit-versions/{audit_version.pk}/rooms/{room.pk}/photos/"
+    response = client.get(url)
+    assert response.status_code == HTTPStatus.OK
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["public_url"] == "https://example.com/photo.jpg"
+    assert data[0]["thumbnail_url"] == "https://example.com/thumb.jpg"
+
+
+@pytest.mark.django_db
+def test_list_room_photos_requires_auth(client, audit_version, room):
+    url = f"/api/audit-versions/{audit_version.pk}/rooms/{room.pk}/photos/"
+    response = client.get(url)
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
+
+
+@pytest.mark.django_db
+def test_list_room_photos_wrong_version_returns_404(client, user, audit_version, room):
+    client.force_login(user)
+    url = f"/api/audit-versions/9999/rooms/{room.pk}/photos/"
+    response = client.get(url)
+    assert response.status_code == HTTPStatus.NOT_FOUND

@@ -5,6 +5,7 @@ from light_audit.audit.models import AuditVersion
 from light_audit.audit.models import Building
 from light_audit.audit.models import Floor
 from light_audit.audit.models import LogEntry
+from light_audit.audit.models import Photo
 from light_audit.audit.models import Project
 from light_audit.audit.models import Room
 
@@ -82,6 +83,16 @@ class LogEntrySchema(ModelSchema):
             "flag_photocell", "flag_twistlock_pc", "flag_wet_location",
             "flag_dark_sky",
             "created", "modified",
+        ]
+
+
+class PhotoSchema(ModelSchema):
+    class Meta:
+        model = Photo
+        fields = [
+            "id", "photo_type", "public_url", "thumbnail_url",
+            "space_name", "notes", "taken_at", "mime_type",
+            "width", "height", "created", "modified",
         ]
 
 

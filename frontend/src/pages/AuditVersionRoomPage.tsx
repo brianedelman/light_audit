@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useParams } from '@tanstack/react-router'
 import {
@@ -12,6 +12,19 @@ import {
 } from '@tanstack/react-table'
 import api from '../lib/api'
 import FloorTreeSidebar from '../components/FloorTreeSidebar'
+
+interface Photo {
+  id: number
+  photo_type: string
+  public_url: string
+  thumbnail_url: string
+  space_name: string
+  notes: string
+  taken_at: string | null
+  mime_type: string
+  width: number | null
+  height: number | null
+}
 
 interface Room {
   id: number
@@ -74,6 +87,133 @@ function FlagIcons({ row }: { row: LogEntry }) {
         </span>
       ))}
     </span>
+  )
+}
+
+function Lightbox({
+  photos,
+  index,
+  onClose,
+  onPrev,
+  onNext,
+}: {
+  photos: Photo[]
+  index: number
+  onClose: () => void
+  onPrev: () => void
+  onNext: () => void
+}) {
+  const photo = photos[index]
+
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+      else if (e.key === 'ArrowLeft') onPrev()
+      else if (e.key === 'ArrowRight') onNext()
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [onClose, onPrev, onNext])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+      data-testid="lightbox"
+      onClick={onClose}
+    >
+      <button
+        className="absolute right-4 top-4 text-white text-2xl font-bold"
+        onClick={onClose}
+        data-testid="lightbox-close"
+        aria-label="Close"
+      >
+        ✕
+      </button>
+      {index > 0 && (
+        <button
+          className="absolute left-4 top-1/2 -translate-y-1/2 text-white text-3xl font-bold"
+          onClick={(e) => { e.stopPropagation(); onPrev() }}
+          data-testid="lightbox-prev"
+          aria-label="Previous"
+        >
+          ‹
+        </button>
+      )}
+      {index < photos.length - 1 && (
+        <button
+          className="absolute right-4 top-1/2 -translate-y-1/2 text-white text-3xl font-bold"
+          onClick={(e) => { e.stopPropagation(); onNext() }}
+          data-testid="lightbox-next"
+          aria-label="Next"
+        >
+          ›
+        </button>
+      )}
+      <img
+        src={photo.public_url}
+        alt={photo.space_name || photo.photo_type}
+        className="max-h-[90vh] max-w-[90vw] rounded object-contain"
+        onClick={(e) => e.stopPropagation()}
+        data-testid="lightbox-image"
+      />
+    </div>
+  )
+}
+
+function PhotoGrid({ versionId, roomId }: { versionId: string; roomId: string }) {
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+
+  const { data: photos = [], isLoading } = useQuery<Photo[]>({
+    queryKey: ['room-photos', versionId, roomId],
+    queryFn: async () => {
+      const res = await api.get<Photo[]>(
+        `/audit-versions/${versionId}/rooms/${roomId}/photos/`,
+      )
+      return res.data
+    },
+  })
+
+  const handlePrev = useCallback(() => {
+    setLightboxIndex((i) => (i !== null && i > 0 ? i - 1 : i))
+  }, [])
+
+  const handleNext = useCallback(() => {
+    setLightboxIndex((i) => (i !== null && i < photos.length - 1 ? i + 1 : i))
+  }, [photos.length])
+
+  const handleClose = useCallback(() => setLightboxIndex(null), [])
+
+  if (isLoading) return <div className="py-2 text-sm text-gray-500">Loading photos…</div>
+  if (photos.length === 0) return <div className="py-2 text-sm text-gray-400" data-testid="no-photos">No photos.</div>
+
+  return (
+    <>
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6" data-testid="photo-grid">
+        {photos.map((photo, idx) => (
+          <button
+            key={photo.id}
+            className="overflow-hidden rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            onClick={() => setLightboxIndex(idx)}
+            data-testid={`photo-thumb-${photo.id}`}
+          >
+            <img
+              src={photo.thumbnail_url || photo.public_url}
+              alt={photo.space_name || photo.photo_type}
+              className="h-24 w-full object-cover"
+            />
+          </button>
+        ))}
+      </div>
+      {lightboxIndex !== null && (
+        <Lightbox
+          photos={photos}
+          index={lightboxIndex}
+          onClose={handleClose}
+          onPrev={handlePrev}
+          onNext={handleNext}
+        />
+      )}
+    </>
   )
 }
 
@@ -256,7 +396,9 @@ export default function AuditVersionRoomPage() {
             </div>
           )}
         </dl>
-        <h2 className="mb-3 text-lg font-semibold">Log Entries</h2>
+        <h2 className="mb-3 text-lg font-semibold">Photos</h2>
+        <PhotoGrid versionId={versionId} roomId={roomId} />
+        <h2 className="mb-3 mt-8 text-lg font-semibold">Log Entries</h2>
         <LogEntriesTable versionId={versionId} roomId={roomId} />
       </div>
     </div>
