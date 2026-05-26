@@ -3,7 +3,9 @@ from ninja import Schema
 
 from light_audit.audit.models import AuditVersion
 from light_audit.audit.models import Building
+from light_audit.audit.models import Floor
 from light_audit.audit.models import Project
+from light_audit.audit.models import Room
 
 
 class ProjectSchema(ModelSchema):
@@ -59,3 +61,22 @@ class AuditVersionSchema(ModelSchema):
         if obj.created_by:
             return obj.created_by.get_full_name() or obj.created_by.email
         return ""
+
+
+class RoomSchema(ModelSchema):
+    class Meta:
+        model = Room
+        fields = ["id", "name", "room_type", "zone_label", "pin_code",
+                  "square_feet", "notes", "created", "modified"]
+
+
+class FloorWithRoomsSchema(ModelSchema):
+    rooms: list[RoomSchema] = []
+
+    class Meta:
+        model = Floor
+        fields = ["id", "name", "level", "sort_order", "created", "modified"]
+
+    @staticmethod
+    def resolve_rooms(obj: Floor) -> list:
+        return list(obj.rooms.all())

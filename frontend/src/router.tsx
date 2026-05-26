@@ -4,6 +4,9 @@ import PasswordResetPage from './pages/PasswordResetPage'
 import PasswordResetConfirmPage from './pages/PasswordResetConfirmPage'
 import ProjectsListPage from './pages/ProjectsListPage'
 import ProjectDetailPage from './pages/ProjectDetailPage'
+import AuditVersionPage from './pages/AuditVersionPage'
+import AuditVersionFloorPage from './pages/AuditVersionFloorPage'
+import AuditVersionRoomPage from './pages/AuditVersionRoomPage'
 
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
@@ -45,6 +48,24 @@ const projectDetailRoute = createRoute({
   component: ProjectDetailPage,
 })
 
+const auditVersionRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/audit-versions/$versionId',
+  component: AuditVersionPage,
+})
+
+const auditVersionFloorRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/audit-versions/$versionId/floors/$floorId',
+  component: AuditVersionFloorPage,
+})
+
+const auditVersionRoomRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/audit-versions/$versionId/rooms/$roomId',
+  component: AuditVersionRoomPage,
+})
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -52,6 +73,9 @@ const routeTree = rootRoute.addChildren([
   passwordResetConfirmRoute,
   projectsRoute,
   projectDetailRoute,
+  auditVersionRoute,
+  auditVersionFloorRoute,
+  auditVersionRoomRoute,
 ])
 
 export const router = createRouter({ routeTree })

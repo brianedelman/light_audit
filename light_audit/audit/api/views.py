@@ -7,12 +7,16 @@ from ninja.errors import HttpError
 from light_audit.audit.api.schema import AuditVersionSchema
 from light_audit.audit.api.schema import BuildingCreateSchema
 from light_audit.audit.api.schema import BuildingSchema
+from light_audit.audit.api.schema import FloorWithRoomsSchema
 from light_audit.audit.api.schema import ProjectCreateSchema
 from light_audit.audit.api.schema import ProjectSchema
+from light_audit.audit.api.schema import RoomSchema
 from light_audit.audit.models import AuditVersion
 from light_audit.audit.models import AuditVersionStatus
 from light_audit.audit.models import Building
+from light_audit.audit.models import Floor
 from light_audit.audit.models import Project
+from light_audit.audit.models import Room
 
 projects_router = Router(tags=["projects"])
 buildings_router = Router(tags=["buildings"])
@@ -120,6 +124,17 @@ def push_to_ipad(request, version_id: int):
     version.status = AuditVersionStatus.PUBLISHED_TO_IPAD
     version.save()
     return PushToIpadResponse(version_id=version.pk, status=version.status)
+
+
+@audit_versions_router.get("/{version_id}/floors/", response=list[FloorWithRoomsSchema])
+def list_version_floors(request, version_id: int):
+    version = get_object_or_404(AuditVersion, pk=version_id)
+    return Floor.objects.filter(audit_version=version).prefetch_related("rooms")
+
+
+@audit_versions_router.get("/{version_id}/rooms/{room_id}/", response=RoomSchema)
+def retrieve_version_room(request, version_id: int, room_id: int):
+    return get_object_or_404(Room, pk=room_id, audit_version_id=version_id)
 
 
 @audit_versions_router.post(
