@@ -1,5 +1,20 @@
 Ralph progress log — Light Audit Platform Phase 1
 
+## 2026-05-26 - US-049
+- Added `_parse_flags_from_response(text)` helper in `consumers.py`: regex extracts `\`\`\`flags\n[...]\n\`\`\`` block, returns list of dicts or [] on missing/invalid JSON
+- Added `_persist_flags(flags_data, audit_version, agent_run)`: validates log_entry_id against audit_version, defaults invalid severity to INFO, skips empty messages, bulk_creates AuditFlag rows with source_run=agent_run
+- Updated `_build_system_prompt(audit_version)`: queries dismissed AuditFlags for audit_version, appends "Previously dismissed flags" section with severity, message, and dismissed_reason
+- Updated `_stream()` in consumer: after stream loop ends, calls `_parse_flags_from_response` + `_persist_flags` with the yielded `agent_run` (was `_run`, now `agent_run`)
+- 14 tests in `test_consumers_us049.py`: 4 parse tests, 5 persist tests, 3 prompt tests, 2 WS integration tests
+- 211 backend tests pass
+- Files changed: `audit/consumers.py`, `audit/test_consumers_us049.py` (new), `ralph/prd.json`
+- **Learnings for future iterations:**
+  - WS integration tests that call `_persist_flags` need a real AgentRun (not MagicMock) because of FK constraint — pre-create via `AgentRun.objects.create()` before the mock context manager
+  - `AuditFlag.objects.bulk_create()` respects FK constraints; MagicMock pk values fail unless the referenced row actually exists
+  - `_persist_flags` called inside the try block in `_stream()` — if it raises, BLE001 catches it and puts `__error__` in queue; integration tests must handle error messages (break on `done` OR `error`)
+  - Flag format for Claude prompt: ````flags\n[{"log_entry_id": N, "severity": "...", "message": "..."}]\n```\``
+---
+
 ## 2026-05-26 - US-048
 - Created `frontend/src/components/ChatPanel.tsx`: connects WS to `audit-review/{versionId}/` on mount; fetches predefined prompts from `/predefined-prompts/`; streams token/done/error WS messages; conversation appends in-place; predefined prompt dropdown populates from API
 - Updated `frontend/src/pages/AuditVersionPage.tsx`: added 384px `ChatPanel` column on right side

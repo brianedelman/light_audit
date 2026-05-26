@@ -720,8 +720,8 @@
         "Typecheck passes"
       ],
       "priority": 49,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "_parse_flags_from_response extracts ```flags JSON block; _persist_flags bulk_creates AuditFlag rows (skips unknown log_entry_id/empty message/invalid severity); _build_system_prompt queries dismissed flags + injects them into system context. 14 tests: unit (parse, persist, prompt) + 2 WS integration tests."
     },
     {
       "id": "US-050",
