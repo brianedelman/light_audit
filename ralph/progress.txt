@@ -1,5 +1,23 @@
 Ralph progress log — Light Audit Platform Phase 1
 
+## 2026-05-26 - US-046
+- Created `light_audit/audit/consumers.py`: `AuditReviewConsumer(AsyncJsonWebsocketConsumer)` at `/ws/audit-review/{audit_version_id}/`
+- Auth-gated: rejects anonymous with close code 4003; rejects missing AuditVersion with 4004
+- `receive_json` builds audit context via `_build_system_prompt()` (DB query for LogEntries), runs `run_agent(stream=True)` in a daemon thread via `threading.Thread`; streams tokens back over WS via asyncio.Queue + `loop.call_soon_threadsafe`
+- Conversation history maintained as `self.history` list; assistant response appended after each done
+- System context injected into first user turn only; subsequent turns use raw history
+- Updated `config/routing.py` with `re_path` for `AuditReviewConsumer`
+- 6 pytest tests in `test_consumers.py`: anonymous rejected, auth connect, missing AV rejected, token stream, empty prompt error, conversation history maintained
+- 193 backend tests pass; ruff clean
+- Files changed: `audit/consumers.py` (new), `audit/test_consumers.py` (new), `config/routing.py`
+- **Learnings for future iterations:**
+  - `WebsocketCommunicator` scope won't have `url_route` unless routed through `URLRouter` — always wrap consumer in `URLRouter` for tests
+  - Thread→asyncio communication: get `loop = asyncio.get_running_loop()` in the async method, then `loop.call_soon_threadsafe(queue.put_nowait, item)` from the thread; `asyncio.Queue` bridges the two
+  - Use `asyncio.to_thread(lambda: Model.objects.get(pk=...))` for async DB lookups in `connect()`
+  - `close_old_connections()` at thread start prevents stale DB connection errors
+  - Channels test scope: set `communicator.scope["user"] = user` after creating communicator to inject auth
+---
+
 ## 2026-05-25 - US-045
 - Added `anthropic==0.57.0` to pyproject.toml dependencies; installed via `uv add anthropic`
 - Added `ANTHROPIC_API_KEY` and `CLAUDE_MODEL` settings to `config/settings/base.py`
