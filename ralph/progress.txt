@@ -695,3 +695,17 @@ US-036 | 2026-05-25 | passes=true
   - Scope restriction test: check specific field names (wattage, mount_type) NOT in prompt rather than generic words that may appear in the restriction clause itself
   - PLR2004 magic value noqa comment works: `assert code == 4003  # noqa: PLR2004`
 ---
+
+## 2026-05-26 - US-054
+- Created `frontend/src/components/ProjectChatPanel.tsx`: connects WS to `project-chat/{projectId}/` on mount (skips if projectId is null); streams token/done/error; shows "Select a project to start chatting" placeholder when no projectId
+- Updated `frontend/src/pages/ProjectDetailPage.tsx`: added `ProjectChatPanel` (width 96 col on right), wrapped main content in flex layout
+- Updated `frontend/src/pages/ProjectsListPage.tsx`: added `ProjectChatPanel projectId={null}` (list page has no project context)
+- Added `vi.mock('../lib/ws', ...)` to `project-detail.test.tsx`
+- 7 vitest tests in `project-chat-panel.test.tsx`: render, null placeholder, no-WS-on-null, connects with right path, send + user message, token stream + done, error message
+- 162 frontend tests pass; tsc clean
+- Files changed: `frontend/src/components/ProjectChatPanel.tsx` (new), `frontend/src/pages/ProjectDetailPage.tsx`, `frontend/src/pages/ProjectsListPage.tsx`, `frontend/src/__tests__/project-chat-panel.test.tsx` (new), `frontend/src/__tests__/project-detail.test.tsx`
+- **Learnings for future iterations:**
+  - `vi.mocked(await import(...))` does NOT work in non-async `it` blocks (syntax error) — capture connectWs mock via closure instead
+  - For null-projectId test: check `capturedOptions.onOpen` is undefined (WS never connected)
+  - For projectId present test: check `capturedOptions.onOpen` is defined (WS connected)
+---
