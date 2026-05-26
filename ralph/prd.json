@@ -705,8 +705,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 48,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "ChatPanel component: connectWs to audit-review/{versionId}/ on mount; predefined prompts from /predefined-prompts/ in dropdown; streams token/done/error WS messages; conversation appends in-place. 7 frontend tests (render, dropdown, send, stream, predefined, error, follow-ups). Added scrollIntoView mock to test-setup.ts; mocked connectWs in navigation test."
     },
     {
       "id": "US-049",

@@ -1,5 +1,21 @@
 Ralph progress log — Light Audit Platform Phase 1
 
+## 2026-05-26 - US-048
+- Created `frontend/src/components/ChatPanel.tsx`: connects WS to `audit-review/{versionId}/` on mount; fetches predefined prompts from `/predefined-prompts/`; streams token/done/error WS messages; conversation appends in-place; predefined prompt dropdown populates from API
+- Updated `frontend/src/pages/AuditVersionPage.tsx`: added 384px `ChatPanel` column on right side
+- Added `Element.prototype.scrollIntoView = () => {}` to `frontend/src/test-setup.ts` (jsdom doesn't implement it)
+- Added `vi.mock('../lib/ws', ...)` to `audit-version-navigation.test.tsx` + `/predefined-prompts/` handler (AuditVersionPage now renders ChatPanel)
+- 7 pytest tests in `chat-panel.test.tsx`: render, predefined dropdown, send, token stream + done finalization, predefined prompt sends prompt_text, error message, follow-up conversation
+- 149 frontend tests pass; tsc clean
+- Files changed: `frontend/src/components/ChatPanel.tsx` (new), `frontend/src/pages/AuditVersionPage.tsx`, `frontend/src/test-setup.ts`, `frontend/src/__tests__/chat-panel.test.tsx` (new), `frontend/src/__tests__/audit-version-navigation.test.tsx`
+- **Learnings for future iterations:**
+  - `scrollIntoView` not in jsdom — add `window.HTMLElement.prototype.scrollIntoView = () => {}` to test-setup.ts
+  - When a page imports a new component that uses `connectWs`, all tests for that page need `vi.mock('../lib/ws', ...)` added
+  - `connectWs` mock: return `{ send: vi.fn(), close: vi.fn() }` and capture `options` for injecting WS messages in tests
+  - Use `act(() => { capturedOptions.onMessage(...) })` to simulate WS message delivery in tests
+  - WS connection maintained for lifetime of component; history kept server-side per connection
+---
+
 ## 2026-05-26 - US-047
 - Added `PredefinedPrompt` model to `audit/models.py`: name, prompt_text, agent_type (uses AgentType choices), active bool; ordered by name
 - Generated migration `0015_predefined_prompt.py`
