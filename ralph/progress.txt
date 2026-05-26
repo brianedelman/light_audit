@@ -1,5 +1,22 @@
 Ralph progress log — Light Audit Platform Phase 1
 
+## 2026-05-26 - US-047
+- Added `PredefinedPrompt` model to `audit/models.py`: name, prompt_text, agent_type (uses AgentType choices), active bool; ordered by name
+- Generated migration `0015_predefined_prompt.py`
+- Registered `PredefinedPromptAdmin` in `audit/admin.py` with list_display, list_filter, search_fields
+- Added `PredefinedPromptSchema` (ModelSchema) to `audit/api/schema.py`
+- Added `predefined_prompts_router` + `GET /predefined-prompts/` endpoint in `audit/api/views.py`; filters active=True only
+- Registered router at `/predefined-prompts/` in `config/api.py`
+- Created seed fixture `audit/fixtures/predefined_prompts.json` with 3 placeholder prompts (summarize findings, energy savings, compliance issues)
+- 4 pytest tests: active-only filter, field values, auth required, model __str__
+- 197 backend tests pass; ruff clean on new/modified files
+- Files changed: `audit/models.py`, `audit/migrations/0015_predefined_prompt.py`, `audit/admin.py`, `audit/api/schema.py`, `audit/api/views.py`, `audit/fixtures/predefined_prompts.json` (new), `audit/test_predefined_prompts_api.py` (new), `config/api.py`
+- **Learnings for future iterations:**
+  - `AgentType` choices already defined in models.py — reuse for `agent_type` fields on new models
+  - Seed fixtures go in `audit/fixtures/` with model label `"audit.modelname"` and explicit pk + created/modified fields
+  - Pre-existing ruff COM812/E501 errors exist in models.py and views.py — don't treat as blockers; only fix errors in newly added/changed lines
+---
+
 ## 2026-05-26 - US-046
 - Created `light_audit/audit/consumers.py`: `AuditReviewConsumer(AsyncJsonWebsocketConsumer)` at `/ws/audit-review/{audit_version_id}/`
 - Auth-gated: rejects anonymous with close code 4003; rejects missing AuditVersion with 4004
