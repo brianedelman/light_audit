@@ -2,6 +2,24 @@ Ralph progress log — Light Audit Platform Phase 1
 Branch: ralph/phase-1
 Started: 2026-05-24
 
+## 2026-05-25 - US-044
+- Backend: Added `AuditFlagSchema` (with custom `log_entry_id` field + resolver) to `api/schema.py`
+- Backend: Added `GET /audit-versions/{v}/rooms/{r}/audit-flags/` to `audit_versions_router`
+- Backend: Added `audit_flags_router` + `POST /audit-flags/{id}/dismiss/` endpoint; registered at `/audit-flags/` in `config/api.py`
+- Frontend: Added `AuditFlag` interface + `AuditFlagBadges` component with severity-colored badges (info=blue, warn=yellow, critical=red); dismissed flags show strikethrough
+- Frontend: Added `FlagDetailPanel` (fixed right-side slide panel) with flag message, dismissed state display, and Dismiss button
+- Frontend: Added `DismissModal` with reason textarea + confirm/cancel; calls `POST /api/audit-flags/{id}/dismiss/`; invalidates `room-audit-flags` query on success
+- Frontend: `makeColumns` factory pattern (replaces static `columns` array) to pass `flagsByEntry` map + `onFlagSelect` handler into the `audit_flags` display column
+- 7 backend tests in `test_audit_flags_api.py`; 6 frontend tests in `audit-flags.test.tsx`
+- 182 backend tests pass; 142 frontend tests pass; tsc + vite build clean
+- Files changed: `api/schema.py`, `api/views.py`, `config/api.py`, `test_audit_flags_api.py` (new), `pages/AuditVersionRoomPage.tsx`, `__tests__/audit-flags.test.tsx` (new)
+- **Learnings for future iterations:**
+  - Ninja ModelSchema `fields` list uses Django field attribute names — `log_entry_id` is NOT a model field; use `log_entry_id: int` as a Schema field + `@staticmethod resolve_log_entry_id(obj)` returning `obj.log_entry_id`
+  - `makeColumns` factory pattern (vs static `columns` array) is needed when cell renderers need closures over component state/props
+  - FlagDetailPanel closes both itself and the DismissModal on successful dismiss via `onDismissSuccess()` + `onClose()` callbacks
+  - `z-60` Tailwind class needed for DismissModal to sit above FlagDetailPanel (z-50)
+---
+
 ## 2026-05-25 - US-043
 - Installed `pannellum` npm package (2.5.7) — IIFE browser global library, no ES module exports
 - Created `frontend/src/types/pannellum.d.ts`: side-effect module declaration + `Window.pannellum` interface

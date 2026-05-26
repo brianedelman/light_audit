@@ -640,8 +640,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 44,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Backend: AuditFlagSchema + GET /audit-versions/{v}/rooms/{r}/audit-flags/ + POST /audit-flags/{id}/dismiss/ (audit_flags_router registered at /audit-flags/). Frontend: AuditFlagBadges (severity-colored) + FlagDetailPanel (slide-out) + DismissModal (reason textarea). makeColumns factory passes flagsByEntry map + onFlagSelect to audit_flags display column. 7 backend tests + 6 frontend tests."
     },
     {
       "id": "US-045",
