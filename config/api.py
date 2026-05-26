@@ -16,3 +16,4 @@ api.add_router("/audit-versions/", "light_audit.audit.api.views.audit_versions_r
 api.add_router("/audits/", "light_audit.audit.api.sync.sync_router")
 api.add_router("/media/", "light_audit.audit.api.media.media_router")
 api.add_router("/audit-flags/", "light_audit.audit.api.views.audit_flags_router")
+api.add_router("/predefined-prompts/", "light_audit.audit.api.views.predefined_prompts_router")

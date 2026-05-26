@@ -7,6 +7,7 @@ from light_audit.audit.models import Building
 from light_audit.audit.models import Floor
 from light_audit.audit.models import LogEntry
 from light_audit.audit.models import Photo
+from light_audit.audit.models import PredefinedPrompt
 from light_audit.audit.models import Project
 from light_audit.audit.models import Room
 
@@ -110,6 +111,12 @@ class AuditFlagSchema(ModelSchema):
     @staticmethod
     def resolve_log_entry_id(obj: AuditFlag) -> int:
         return obj.log_entry_id
+
+
+class PredefinedPromptSchema(ModelSchema):
+    class Meta:
+        model = PredefinedPrompt
+        fields = ["id", "name", "prompt_text", "agent_type", "active"]
 
 
 class FloorWithRoomsSchema(ModelSchema):

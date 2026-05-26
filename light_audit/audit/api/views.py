@@ -11,6 +11,7 @@ from light_audit.audit.api.schema import BuildingSchema
 from light_audit.audit.api.schema import FloorWithRoomsSchema
 from light_audit.audit.api.schema import LogEntrySchema
 from light_audit.audit.api.schema import PhotoSchema
+from light_audit.audit.api.schema import PredefinedPromptSchema
 from light_audit.audit.api.schema import ProjectCreateSchema
 from light_audit.audit.api.schema import ProjectSchema
 from light_audit.audit.api.schema import RoomSchema
@@ -22,6 +23,7 @@ from light_audit.audit.models import Floor
 from light_audit.audit.models import LogEntry
 from light_audit.audit.models import Photo
 from light_audit.audit.models import PhotoUploadStatus
+from light_audit.audit.models import PredefinedPrompt
 from light_audit.audit.models import Project
 from light_audit.audit.models import Room
 
@@ -29,6 +31,7 @@ projects_router = Router(tags=["projects"])
 buildings_router = Router(tags=["buildings"])
 audit_versions_router = Router(tags=["audit-versions"])
 audit_flags_router = Router(tags=["audit-flags"])
+predefined_prompts_router = Router(tags=["predefined-prompts"])
 
 
 # --- Projects ---
@@ -198,3 +201,10 @@ def dismiss_audit_flag(request, flag_id: int, data: DismissRequest):
     flag = get_object_or_404(AuditFlag, pk=flag_id)
     flag.dismiss(user=request.user, reason=data.reason)
     return flag
+
+
+# --- Predefined Prompts ---
+
+@predefined_prompts_router.get("/", response=list[PredefinedPromptSchema])
+def list_predefined_prompts(request):
+    return PredefinedPrompt.objects.filter(active=True)

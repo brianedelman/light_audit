@@ -1,0 +1,38 @@
+[
+  {
+    "model": "audit.predefinedprompt",
+    "pk": 1,
+    "fields": {
+      "name": "Summarize audit findings",
+      "prompt_text": "Please review the audit log entries for this location and provide a concise summary of the key findings, including fixture types, quantities, and any flagged items that may require attention.",
+      "agent_type": "audit_review",
+      "active": true,
+      "created": "2026-01-01T00:00:00Z",
+      "modified": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "audit.predefinedprompt",
+    "pk": 2,
+    "fields": {
+      "name": "Identify energy savings opportunities",
+      "prompt_text": "Based on the audit data, identify the top energy savings opportunities for this location. Focus on high-wattage fixtures, areas without occupancy controls, and fixtures lacking daylight harvesting.",
+      "agent_type": "audit_review",
+      "active": true,
+      "created": "2026-01-01T00:00:00Z",
+      "modified": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "audit.predefinedprompt",
+    "pk": 3,
+    "fields": {
+      "name": "Flag compliance issues",
+      "prompt_text": "Review the audit entries and identify any potential code compliance issues, including emergency backup (EMBB) requirements, wet location ratings, 480V fixtures, and any items flagged during the audit.",
+      "agent_type": "audit_review",
+      "active": true,
+      "created": "2026-01-01T00:00:00Z",
+      "modified": "2026-01-01T00:00:00Z"
+    }
+  }
+]

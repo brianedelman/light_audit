@@ -655,6 +655,21 @@ class AgentRun(TimeStampedModel):
         self.save()
 
 
+class PredefinedPrompt(TimeStampedModel):
+    name = models.CharField(max_length=255)
+    prompt_text = models.TextField()
+    agent_type = models.CharField(
+        max_length=20, choices=AgentType.choices, default=AgentType.AUDIT_REVIEW
+    )
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
 class KnowledgeDoc(TimeStampedModel):
     title = models.CharField(max_length=255)
     source_path = models.CharField(max_length=500, blank=True)

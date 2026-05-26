@@ -13,6 +13,7 @@ from .models import KnowledgeDoc
 from .models import LightLevelReading
 from .models import LogEntry
 from .models import Photo
+from .models import PredefinedPrompt
 from .models import ProductAccessory
 from .models import Project
 from .models import Room
@@ -300,6 +301,13 @@ class AgentRunAdmin(admin.ModelAdmin):
     list_filter = ("agent_type", "status")
     search_fields = ("user__email", "project__name", "error")
     readonly_fields = ("started_at", "finished_at")
+
+
+@admin.register(PredefinedPrompt)
+class PredefinedPromptAdmin(admin.ModelAdmin):
+    list_display = ("name", "agent_type", "active", "created")
+    list_filter = ("agent_type", "active")
+    search_fields = ("name", "prompt_text")
 
 
 @admin.register(AuditFlag)
