@@ -351,5 +351,9 @@ R2_ENDPOINT_URL = env(
 )
 R2_PUBLIC_URL = env("R2_PUBLIC_URL", default="")
 
+# ==== Anthropic ====
+ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default="")
+CLAUDE_MODEL = env("CLAUDE_MODEL", default="claude-sonnet-4-6")
+
 # Your stuff...
 # ------------------------------------------------------------------------------

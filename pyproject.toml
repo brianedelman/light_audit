@@ -11,6 +11,7 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
+  "anthropic==0.57.0",
   "argon2-cffi==25.1.0",
   "celery==5.6.3",
   "channels==4.3.2",
