@@ -654,3 +654,19 @@ US-036 | 2026-05-25 | passes=true
   - `useMutation` + `useQueryClient().invalidateQueries` is the standard pattern for action buttons that refresh list data
   - `data-testid` on action buttons enables clean waitFor assertions in tests
 ---
+
+## 2026-05-26 - US-051
+- Added `python-docx>=1.2.0` to pyproject.toml via `uv add python-docx`
+- Added `import re`, `import docx`, `AgentRun`, `AgentType` imports to `audit/api/views.py`
+- Added `_FLAGS_BLOCK_RE` regex + `POST /audit-versions/{version_id}/export/docx/` endpoint
+- Endpoint fetches latest `ok` AgentRun with `agent_type=audit_review` for version; strips ```flags``` block from narrative prose; writes Summary + Flag Details sections via python-docx
+- Active flags only (dismissed excluded); each flag formatted as heading [SEVERITY] floor/room/fixture + paragraph with message
+- 9 tests in `test_docx_export_api.py`: auth guard, returns file, 404 no run, 404 unknown version, summary text, flags block stripped, flag details included, dismissed excluded, no-flags message
+- 231 backend tests pass; ruff clean on new/changed lines
+- Files changed: `audit/api/views.py`, `audit/test_docx_export_api.py` (new), `pyproject.toml`, `uv.lock`
+- **Learnings for future iterations:**
+  - `git stash && ... && git stash pop` in a single bash call is risky — if linter hooks revert files between stash and pop, changes can be silently lost; prefer running tests without stashing
+  - Avoid `para = para.strip()` (PLW2901 — loop var overwritten); use a different name like `stripped`
+  - `docx.Document()` not `docx.Document` — call it as a constructor; save to BytesIO then read
+  - `_FLAGS_BLOCK_RE.sub("", text)` strips the structured flags block from narrative before adding to docx
+---
