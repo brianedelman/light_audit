@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useParams } from '@tanstack/react-router'
 import api from '../lib/api'
+import ExportButtons from '../components/ExportButtons'
 import FloorTreeSidebar from '../components/FloorTreeSidebar'
 import ChatPanel from '../components/ChatPanel'
 
@@ -34,7 +35,10 @@ export default function AuditVersionPage() {
     <div className="flex h-full" data-testid="audit-version-page">
       <FloorTreeSidebar versionId={versionId} />
       <div className="flex-1 p-8">
-        <h1 className="mb-4 text-2xl font-bold">Version {version.version_number}</h1>
+        <div className="mb-4 flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Version {version.version_number}</h1>
+          <ExportButtons versionId={versionId} />
+        </div>
         <dl className="space-y-2 text-sm">
           {version.label && (
             <div>
