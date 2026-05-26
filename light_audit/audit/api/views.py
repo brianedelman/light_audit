@@ -1,4 +1,9 @@
+import csv
+import io
+
+import openpyxl
 from django.db.models import Count
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from ninja import Router
 from ninja import Schema
@@ -188,6 +193,83 @@ def duplicate_audit_version(request, version_id: int):
 def list_room_audit_flags(request, version_id: int, room_id: int):
     get_object_or_404(Room, pk=room_id, audit_version_id=version_id)
     return AuditFlag.objects.filter(log_entry__room_id=room_id)
+
+
+_EXPORT_COLUMNS = [
+    "floor", "room", "fixture_id", "description", "qty", "wattage",
+    "mount_type", "mount_height", "switch_type", "controls", "optic",
+    "location", "facility", "space_zone", "ctrl_hours", "notes",
+    "flag_integral_sensor", "flag_embb", "flag_air_return", "flag_wire_guard",
+    "flag_volt_480", "flag_em_gen", "flag_photocell", "flag_twistlock_pc",
+    "flag_wet_location", "flag_dark_sky", "active_flags",
+]
+
+
+def _build_export_rows(version_id: int) -> list[list]:
+    """Return header + data rows for audit version export."""
+    version = get_object_or_404(AuditVersion, pk=version_id)
+    entries = (
+        LogEntry.objects.filter(audit_version=version)
+        .select_related("room__floor")
+        .order_by("room__floor__sort_order", "room__name", "fixture_id")
+    )
+    # Build map of log_entry_id → active flags summary
+    active_flags = AuditFlag.objects.filter(
+        audit_version=version, status="active",
+    ).values("log_entry_id", "severity", "message")
+    flags_by_entry: dict[int, list[str]] = {}
+    for f in active_flags:
+        flags_by_entry.setdefault(f["log_entry_id"], []).append(
+            f"{f['severity'].upper()}: {f['message']}",
+        )
+
+    rows: list[list] = [_EXPORT_COLUMNS]
+    for e in entries:
+        floor_name = e.room.floor.name if e.room and e.room.floor else ""
+        room_name = e.room.name if e.room else ""
+        flag_text = " | ".join(flags_by_entry.get(e.pk, []))
+        rows.append([
+            floor_name, room_name, e.fixture_id, e.description, e.qty,
+            float(e.wattage) if e.wattage is not None else "",
+            e.mount_type, e.mount_height, e.switch_type, e.controls, e.optic,
+            e.location, e.facility, e.space_zone,
+            float(e.ctrl_hours) if e.ctrl_hours is not None else "",
+            e.notes,
+            e.flag_integral_sensor, e.flag_embb, e.flag_air_return, e.flag_wire_guard,
+            e.flag_volt_480, e.flag_em_gen, e.flag_photocell, e.flag_twistlock_pc,
+            e.flag_wet_location, e.flag_dark_sky,
+            flag_text,
+        ])
+    return rows
+
+
+@audit_versions_router.get("/{version_id}/export/xlsx/")
+def export_audit_xlsx(request, version_id: int):
+    rows = _build_export_rows(version_id)
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    for row in rows:
+        ws.append(row)
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    response = HttpResponse(
+        buf.read(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = f'attachment; filename="audit-{version_id}.xlsx"'
+    return response
+
+
+@audit_versions_router.get("/{version_id}/export/csv/")
+def export_audit_csv(request, version_id: int):
+    rows = _build_export_rows(version_id)
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerows(rows)
+    response = HttpResponse(buf.getvalue(), content_type="text/csv")
+    response["Content-Disposition"] = f'attachment; filename="audit-{version_id}.csv"'
+    return response
 
 
 # --- Audit Flags ---
