@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import api from '../lib/api'
+import ProjectChatPanel from '../components/ProjectChatPanel'
 
 interface Project {
   id: number
@@ -27,7 +28,8 @@ export default function ProjectsListPage() {
   if (error) return <div className="p-8 text-red-600">Failed to load projects.</div>
 
   return (
-    <div className="p-8">
+    <div className="flex h-full">
+      <div className="flex-1 overflow-auto p-8">
       <h1 className="mb-6 text-2xl font-bold">Projects</h1>
       {projects && projects.length === 0 ? (
         <p className="text-gray-500">No projects found.</p>
@@ -60,6 +62,10 @@ export default function ProjectsListPage() {
           </tbody>
         </table>
       )}
+      </div>
+      <div className="w-96 shrink-0">
+        <ProjectChatPanel projectId={null} />
+      </div>
     </div>
   )
 }

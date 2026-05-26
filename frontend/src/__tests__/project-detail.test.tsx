@@ -13,6 +13,10 @@ vi.mock('../lib/api', () => ({
   },
 }))
 
+vi.mock('../lib/ws', () => ({
+  connectWs: () => ({ send: vi.fn(), close: vi.fn() }),
+}))
+
 vi.mock('@tanstack/react-router', async () => {
   const actual = await vi.importActual<typeof import('@tanstack/react-router')>('@tanstack/react-router')
   return {

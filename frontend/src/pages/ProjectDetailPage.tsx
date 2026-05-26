@@ -10,6 +10,7 @@ import {
   type SortingState,
 } from '@tanstack/react-table'
 import api from '../lib/api'
+import ProjectChatPanel from '../components/ProjectChatPanel'
 
 interface Project {
   id: number
@@ -199,7 +200,8 @@ export default function ProjectDetailPage() {
   if (!project) return null
 
   return (
-    <div className="p-8">
+    <div className="flex h-full">
+      <div className="flex-1 overflow-auto p-8">
       <h1 className="mb-2 text-2xl font-bold">{project.name}</h1>
       <div className="mb-6 text-sm text-gray-500">
         {project.client && <span className="mr-4">Client: {project.client}</span>}
@@ -237,6 +239,10 @@ export default function ProjectDetailPage() {
           ))}
         </div>
       )}
+      </div>
+      <div className="w-96 shrink-0">
+        <ProjectChatPanel projectId={projectId} />
+      </div>
     </div>
   )
 }
