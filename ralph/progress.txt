@@ -682,3 +682,16 @@ US-036 | 2026-05-25 | passes=true
   - Use `api.request({...})` not `api.get/post` when you need `responseType: 'blob'`; mock `request` in tests
   - "Not implemented: navigation to another Document" warnings from jsdom are benign — anchor click triggers them
 ---
+
+## 2026-05-26 - US-053
+- Added `Project` import to `audit/consumers.py`
+- Added `_build_project_prompt(project)`: scope-limited prompt with project name/client/type/status/buildings only; restriction clause tells Claude not to reference log entries or specs
+- Added `ProjectChatConsumer(AsyncJsonWebsocketConsumer)` at `/ws/project-chat/{project_id}/`: auth-gated (4003), project-lookup gated (4004), calls `run_agent(AgentType.CHATBOT, ...)` with `audit_version=None`
+- Updated `config/routing.py` with `re_path` for ProjectChatConsumer
+- 8 tests in `test_project_chat_consumer.py`: prompt content, scope exclusion, anon rejected, auth connect, 404 project, token stream, chatbot agent_type, empty prompt error
+- 8 tests pass; ruff clean on new code
+- Files changed: `audit/consumers.py`, `audit/test_project_chat_consumer.py` (new), `config/routing.py`
+- **Learnings for future iterations:**
+  - Scope restriction test: check specific field names (wattage, mount_type) NOT in prompt rather than generic words that may appear in the restriction clause itself
+  - PLR2004 magic value noqa comment works: `assert code == 4003  # noqa: PLR2004`
+---
