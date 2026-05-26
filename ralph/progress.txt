@@ -670,3 +670,15 @@ US-036 | 2026-05-25 | passes=true
   - `docx.Document()` not `docx.Document` — call it as a constructor; save to BytesIO then read
   - `_FLAGS_BLOCK_RE.sub("", text)` strips the structured flags block from narrative before adding to docx
 ---
+
+## 2026-05-26 - US-052
+- Created `frontend/src/components/ExportButtons.tsx`: three buttons (CSV/XLSX/DOCX); uses `api.request({ responseType: 'blob' })` to fetch; creates blob URL, clicks anchor, revokes URL; shows error text on failure; DOCX uses POST, CSV/XLSX use GET
+- Updated `frontend/src/pages/AuditVersionPage.tsx`: added `ExportButtons` in header row next to version title
+- 6 vitest tests in `export-buttons.test.tsx`: renders 3 buttons, CSV/XLSX call GET with blob responseType, DOCX calls POST, blob URL created+revoked, error message on failure
+- 155 frontend tests pass; tsc clean
+- Files changed: `frontend/src/components/ExportButtons.tsx` (new), `frontend/src/pages/AuditVersionPage.tsx`, `frontend/src/__tests__/export-buttons.test.tsx` (new)
+- **Learnings for future iterations:**
+  - Mock `URL.createObjectURL` + `URL.revokeObjectURL` on `global.URL` in jsdom tests (not implemented natively)
+  - Use `api.request({...})` not `api.get/post` when you need `responseType: 'blob'`; mock `request` in tests
+  - "Not implemented: navigation to another Document" warnings from jsdom are benign — anchor click triggers them
+---
