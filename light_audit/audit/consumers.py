@@ -19,6 +19,7 @@ from light_audit.audit.models import AuditVersion
 from light_audit.audit.models import FlagSeverity
 from light_audit.audit.models import FlagStatus
 from light_audit.audit.models import LogEntry
+from light_audit.audit.models import Project
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -267,6 +268,132 @@ class AuditReviewConsumer(AsyncJsonWebsocketConsumer):
                 flags_data = _parse_flags_from_response(full_text)
                 if flags_data:
                     _persist_flags(flags_data, audit_version, agent_run)
+            except Exception as exc:  # noqa: BLE001
+                loop.call_soon_threadsafe(
+                    queue.put_nowait, f"__error__{exc}",
+                )
+            finally:
+                loop.call_soon_threadsafe(queue.put_nowait, None)
+
+        threading.Thread(target=_stream, daemon=True).start()
+
+        while True:
+            item = await queue.get()
+            if item is None:
+                break
+            if isinstance(item, str) and item.startswith("__error__"):
+                await self.send_json({"type": "error", "message": item[9:]})
+                return
+            await self.send_json({"type": "token", "text": item})
+
+        self.history.append({"role": "assistant", "content": "".join(full_tokens)})
+        await self.send_json({"type": "done"})
+
+# ---------------------------------------------------------------------------
+# Project chatbot consumer (US-053)
+# ---------------------------------------------------------------------------
+
+
+def _build_project_prompt(project: Project) -> str:
+    """Return a scope-limited system prompt with only project metadata.
+
+    Intentionally excludes audit log entries and spec data.
+    """
+    buildings = list(project.buildings.all()[:20])
+    building_lines = [
+        f"  - {b.name} ({b.address or 'no address'})"
+        for b in buildings
+    ]
+    lines = [
+        "You are an internal assistant for a lighting audit company.",
+        f"Project: {project.name}",
+        f"Client: {project.client or '(none)'}",
+        f"Type: {project.project_type}",
+        f"Status: {project.status}",
+        f"Buildings ({len(buildings)}):",
+        *building_lines,
+        "",
+        "Answer questions about this project. Do not reference or invent audit log "
+        "data, fixture specifications, or other project data not shown above.",
+    ]
+    return "\n".join(lines)
+
+
+class ProjectChatConsumer(AsyncJsonWebsocketConsumer):
+    """Streaming chatbot consumer scoped to a single project.
+
+    URL: /ws/project-chat/{project_id}/
+
+    Incoming message: { "prompt": "<string>" }
+    Outgoing messages:
+      { "type": "token", "text": "<string>" }
+      { "type": "done" }
+      { "type": "error", "message": "<string>" }
+    """
+
+    async def connect(self) -> None:
+        user = self.scope.get("user")
+        if not user or not user.is_authenticated:
+            await self.close(code=4003)
+            return
+
+        project_id = self.scope["url_route"]["kwargs"]["project_id"]
+        try:
+            self.project: Project = await asyncio.to_thread(
+                lambda: Project.objects.prefetch_related("buildings").get(
+                    pk=project_id,
+                ),
+            )
+        except Project.DoesNotExist:
+            await self.close(code=4004)
+            return
+
+        self.history: list[dict] = []
+        await self.accept()
+
+    async def receive_json(self, content: dict) -> None:  # type: ignore[override]
+        prompt = content.get("prompt", "")
+        if not prompt:
+            await self.send_json({"type": "error", "message": "prompt required"})
+            return
+
+        user = self.scope["user"]
+        loop = asyncio.get_running_loop()
+        queue: asyncio.Queue[str | None] = asyncio.Queue()
+        full_tokens: list[str] = []
+
+        self.history.append({"role": "user", "content": prompt})
+        messages = list(self.history)
+        project = self.project
+
+        def _stream() -> None:
+            close_old_connections()
+            try:
+                system_prompt = _build_project_prompt(project)
+
+                # Inject system context into the first user turn only
+                if len(messages) == 1:
+                    augmented = [
+                        {
+                            "role": "user",
+                            "content": f"{system_prompt}\n\n{messages[0]['content']}",
+                        },
+                    ]
+                else:
+                    augmented = messages
+
+                with run_agent(
+                    AgentType.CHATBOT,
+                    user,
+                    project,
+                    None,
+                    augmented,
+                    stream=True,
+                ) as (stream_mgr, _agent_run):
+                    for token in stream_mgr.text_stream:
+                        full_tokens.append(token)
+                        loop.call_soon_threadsafe(queue.put_nowait, token)
+
             except Exception as exc:  # noqa: BLE001
                 loop.call_soon_threadsafe(
                     queue.put_nowait, f"__error__{exc}",
