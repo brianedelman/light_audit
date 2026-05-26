@@ -4,6 +4,7 @@ from ninja import Schema
 from light_audit.audit.models import AuditVersion
 from light_audit.audit.models import Building
 from light_audit.audit.models import Floor
+from light_audit.audit.models import LogEntry
 from light_audit.audit.models import Project
 from light_audit.audit.models import Room
 
@@ -68,6 +69,20 @@ class RoomSchema(ModelSchema):
         model = Room
         fields = ["id", "name", "room_type", "zone_label", "pin_code",
                   "square_feet", "notes", "created", "modified"]
+
+
+class LogEntrySchema(ModelSchema):
+    class Meta:
+        model = LogEntry
+        fields = [
+            "id", "fixture_id", "qty", "wattage", "switch_type", "controls",
+            "mount_type", "notes",
+            "flag_integral_sensor", "flag_embb", "flag_air_return",
+            "flag_wire_guard", "flag_volt_480", "flag_em_gen",
+            "flag_photocell", "flag_twistlock_pc", "flag_wet_location",
+            "flag_dark_sky",
+            "created", "modified",
+        ]
 
 
 class FloorWithRoomsSchema(ModelSchema):
