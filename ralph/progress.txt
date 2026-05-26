@@ -475,3 +475,24 @@ US-036 | 2026-05-25 | passes=true
     - _tick calls peek() 3 times per tick (status before, drainOnce, status after) — test assertions must account for this
     - Bundler module inlining is fully generic now — just add filename to module_files list
 ---
+
+## 2026-05-25 - US-039
+- Added `POST /api/audit-versions/{id}/duplicate/` endpoint in `audit/api/views.py`
+  - Creates new DRAFT AuditVersion with label="Copy of {label}" (or "Copy of v{n}" if no label)
+  - Copies source_payload from original; auto-increments version_number via existing save() logic
+  - Returns AuditVersionSchema
+- Created `light_audit/audit/test_duplicate_api.py` with 6 tests: auth guard, creates draft, copies payload, increments version, label from version_number, 404 on unknown
+- Updated `frontend/src/pages/ProjectDetailPage.tsx`:
+  - Added `ActionButtons` component with `push-to-ipad` + `duplicate` useMutation hooks
+  - Both mutations invalidate `['building-versions', buildingId]` query on success
+  - Buttons disabled while pending; push-to-ipad disabled if already `published_to_ipad`
+  - Used `columnHelper.display()` for the Actions column (no accessor needed)
+  - Switched from static `columns` array to `makeColumns(buildingId)` factory to pass buildingId to cells
+- Updated `frontend/src/__tests__/project-detail.test.tsx` with 2 new tests covering push-to-iPad + duplicate button API calls
+- 172 backend + 112 frontend tests pass
+- **Learnings for future iterations:**
+  - TanStack Table display columns use `columnHelper.display({ id, header, cell })` — no accessor; cell has `info.row.original` for the full row object
+  - `makeColumns(buildingId)` factory pattern passes contextual props into cell renderers cleanly
+  - `useMutation` + `useQueryClient().invalidateQueries` is the standard pattern for action buttons that refresh list data
+  - `data-testid` on action buttons enables clean waitFor assertions in tests
+---
