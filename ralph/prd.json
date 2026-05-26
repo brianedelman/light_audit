@@ -608,8 +608,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 42,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Backend: GET /audit-versions/{id}/rooms/{room_id}/photos/ + PhotoSchema (filters upload_status=uploaded). Frontend: PhotoGrid component with thumbnail grid + Lightbox modal (Esc/arrow key nav, prev/next buttons, click backdrop to close). 5 frontend tests + 3 backend tests."
     },
     {
       "id": "US-043",

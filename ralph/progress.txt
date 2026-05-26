@@ -2,6 +2,20 @@ Ralph progress log — Light Audit Platform Phase 1
 Branch: ralph/phase-1
 Started: 2026-05-24
 
+## 2026-05-25 - US-042
+- Backend: Added `PhotoSchema` to `api/schema.py` with id, photo_type, public_url, thumbnail_url, space_name, notes, taken_at, mime_type, width, height fields
+- Backend: Added `GET /audit-versions/{version_id}/rooms/{room_id}/photos/` endpoint; filters `upload_status=uploaded`
+- Frontend: Added `Lightbox` component to `AuditVersionRoomPage.tsx` — full-resolution image, Esc/arrow-key nav, prev/next buttons, click backdrop closes
+- Frontend: Added `PhotoGrid` component — thumbnail grid via useQuery, opens Lightbox on click, shows "No photos." empty state
+- 3 backend tests (returns uploaded only, auth guard, 404 on wrong version) + 5 frontend tests (grid render, empty state, open lightbox, close via button, close via Esc, next nav)
+- All 175 backend tests pass; all 131 frontend tests pass
+- Files changed: `api/schema.py`, `api/views.py`, `audit/test_api.py`, `pages/AuditVersionRoomPage.tsx`, `__tests__/room-photo-grid.test.tsx` (new)
+- **Learnings for future iterations:**
+  - Floor model requires both `building` and `audit_version` FKs in test fixtures — both are required non-null
+  - Lightbox keyboard handler must be on `window` (not document) for fireEvent.keyDown(window, ...) in tests to work
+  - `upload_status=uploaded` filter needed — don't show in-progress uploads in the review UI
+---
+
 ## 2026-05-25 - US-041
 - Backend: Added `LogEntrySchema` to `api/schema.py` with fixture_id, qty, wattage, switch_type, controls, mount_type, notes, and all 10 boolean flag fields
 - Backend: Added `GET /audit-versions/{version_id}/rooms/{room_id}/log-entries/` endpoint to `api/views.py`; validates room belongs to version
