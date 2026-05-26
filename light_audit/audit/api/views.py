@@ -1,6 +1,8 @@
 import csv
 import io
+import re
 
+import docx
 import openpyxl
 from django.db.models import Count
 from django.http import HttpResponse
@@ -20,6 +22,8 @@ from light_audit.audit.api.schema import PredefinedPromptSchema
 from light_audit.audit.api.schema import ProjectCreateSchema
 from light_audit.audit.api.schema import ProjectSchema
 from light_audit.audit.api.schema import RoomSchema
+from light_audit.audit.models import AgentRun
+from light_audit.audit.models import AgentType
 from light_audit.audit.models import AuditFlag
 from light_audit.audit.models import AuditVersion
 from light_audit.audit.models import AuditVersionStatus
@@ -269,6 +273,77 @@ def export_audit_csv(request, version_id: int):
     writer.writerows(rows)
     response = HttpResponse(buf.getvalue(), content_type="text/csv")
     response["Content-Disposition"] = f'attachment; filename="audit-{version_id}.csv"'
+    return response
+
+
+_FLAGS_BLOCK_RE = re.compile(r"```flags\n.*?```", re.DOTALL)
+
+
+@audit_versions_router.post("/{version_id}/export/docx/")
+def export_audit_docx(request, version_id: int):
+    """Export the latest audit_review agent narrative as a .docx file."""
+    version = get_object_or_404(AuditVersion, pk=version_id)
+    run = (
+        AgentRun.objects.filter(
+            audit_version=version,
+            agent_type=AgentType.AUDIT_REVIEW,
+            status="ok",
+        )
+        .order_by("-created")
+        .first()
+    )
+    if run is None:
+        raise HttpError(404, "No completed audit review run found for this version.")
+
+    narrative_raw: str = run.response_output.get("content", "")
+    # Strip the structured flags block — keep only prose
+    narrative = _FLAGS_BLOCK_RE.sub("", narrative_raw).strip()
+
+    active_flags = (
+        AuditFlag.objects.filter(audit_version=version, status="active")
+        .select_related("log_entry__room__floor")
+        .order_by("severity", "log_entry__fixture_id")
+    )
+
+    document = docx.Document()
+    document.add_heading(f"Audit Narrative — Version {version_id}", level=0)
+
+    document.add_heading("Summary", level=1)
+    for para in narrative.split("\n\n"):
+        stripped = para.strip()
+        if stripped:
+            document.add_paragraph(stripped)
+
+    document.add_heading("Flag Details", level=1)
+    if not active_flags:
+        document.add_paragraph("No active flags.")
+    else:
+        for flag in active_flags:
+            entry = flag.log_entry
+            location = ""
+            if entry:
+                parts = []
+                if entry.room and entry.room.floor:
+                    parts.append(entry.room.floor.name)
+                if entry.room:
+                    parts.append(entry.room.name)
+                if entry.fixture_id:
+                    parts.append(f"Fixture {entry.fixture_id}")
+                location = " / ".join(parts)
+            sev = flag.severity.upper()
+            heading = f"[{sev}] {location}" if location else f"[{sev}]"
+            document.add_heading(heading, level=2)
+            document.add_paragraph(flag.message)
+
+    buf = io.BytesIO()
+    document.save(buf)
+    buf.seek(0)
+    response = HttpResponse(
+        buf.read(),
+        content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
+    fname = f"audit-narrative-{version_id}.docx"
+    response["Content-Disposition"] = f'attachment; filename="{fname}"'
     return response
 
 
