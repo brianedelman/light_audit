@@ -4,6 +4,7 @@ from ninja import Router
 from ninja import Schema
 from ninja.errors import HttpError
 
+from light_audit.audit.api.schema import AuditFlagSchema
 from light_audit.audit.api.schema import AuditVersionSchema
 from light_audit.audit.api.schema import BuildingCreateSchema
 from light_audit.audit.api.schema import BuildingSchema
@@ -13,6 +14,7 @@ from light_audit.audit.api.schema import PhotoSchema
 from light_audit.audit.api.schema import ProjectCreateSchema
 from light_audit.audit.api.schema import ProjectSchema
 from light_audit.audit.api.schema import RoomSchema
+from light_audit.audit.models import AuditFlag
 from light_audit.audit.models import AuditVersion
 from light_audit.audit.models import AuditVersionStatus
 from light_audit.audit.models import Building
@@ -26,6 +28,7 @@ from light_audit.audit.models import Room
 projects_router = Router(tags=["projects"])
 buildings_router = Router(tags=["buildings"])
 audit_versions_router = Router(tags=["audit-versions"])
+audit_flags_router = Router(tags=["audit-flags"])
 
 
 # --- Projects ---
@@ -174,3 +177,24 @@ def duplicate_audit_version(request, version_id: int):
         is_current=False,
     )
     return new_version
+
+
+@audit_versions_router.get(
+    "/{version_id}/rooms/{room_id}/audit-flags/", response=list[AuditFlagSchema],
+)
+def list_room_audit_flags(request, version_id: int, room_id: int):
+    get_object_or_404(Room, pk=room_id, audit_version_id=version_id)
+    return AuditFlag.objects.filter(log_entry__room_id=room_id)
+
+
+# --- Audit Flags ---
+
+class DismissRequest(Schema):
+    reason: str = ""
+
+
+@audit_flags_router.post("/{flag_id}/dismiss/", response=AuditFlagSchema)
+def dismiss_audit_flag(request, flag_id: int, data: DismissRequest):
+    flag = get_object_or_404(AuditFlag, pk=flag_id)
+    flag.dismiss(user=request.user, reason=data.reason)
+    return flag

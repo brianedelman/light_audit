@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams } from '@tanstack/react-router'
 import {
   useReactTable,
@@ -60,6 +60,16 @@ interface LogEntry {
   flag_dark_sky: boolean
 }
 
+interface AuditFlag {
+  id: number
+  log_entry_id: number
+  severity: 'info' | 'warn' | 'critical'
+  message: string
+  status: 'active' | 'dismissed'
+  dismissed_reason: string
+  dismissed_at: string | null
+}
+
 const FLAG_LABELS: { key: keyof LogEntry; label: string }[] = [
   { key: 'flag_integral_sensor', label: 'IS' },
   { key: 'flag_embb', label: 'EMBB' },
@@ -72,6 +82,12 @@ const FLAG_LABELS: { key: keyof LogEntry; label: string }[] = [
   { key: 'flag_wet_location', label: 'WL' },
   { key: 'flag_dark_sky', label: 'DS' },
 ]
+
+const SEVERITY_CLASSES: Record<string, string> = {
+  info: 'bg-blue-100 text-blue-800',
+  warn: 'bg-yellow-100 text-yellow-800',
+  critical: 'bg-red-100 text-red-800',
+}
 
 function FlagIcons({ row }: { row: LogEntry }) {
   const active = FLAG_LABELS.filter((f) => row[f.key])
@@ -88,6 +104,163 @@ function FlagIcons({ row }: { row: LogEntry }) {
         </span>
       ))}
     </span>
+  )
+}
+
+function AuditFlagBadges({
+  flags,
+  onSelect,
+}: {
+  flags: AuditFlag[]
+  onSelect: (flag: AuditFlag) => void
+}) {
+  if (flags.length === 0) return <span className="text-gray-400">—</span>
+  return (
+    <span className="flex flex-wrap gap-1">
+      {flags.map((flag) => (
+        <button
+          key={flag.id}
+          onClick={() => onSelect(flag)}
+          className={`rounded px-1.5 py-0.5 text-xs font-medium ${SEVERITY_CLASSES[flag.severity] ?? 'bg-gray-100 text-gray-800'} ${flag.status === 'dismissed' ? 'opacity-50 line-through' : ''}`}
+          data-testid={`audit-flag-badge-${flag.id}`}
+          title={flag.message}
+        >
+          {flag.severity}
+        </button>
+      ))}
+    </span>
+  )
+}
+
+interface FlagDetailPanelProps {
+  flag: AuditFlag
+  onClose: () => void
+  onDismissSuccess: () => void
+}
+
+function FlagDetailPanel({ flag, onClose, onDismissSuccess }: FlagDetailPanelProps) {
+  const [showDismissModal, setShowDismissModal] = useState(false)
+
+  return (
+    <>
+      <div
+        className="fixed inset-0 z-40 bg-black/20"
+        onClick={onClose}
+        data-testid="flag-panel-backdrop"
+      />
+      <div
+        className="fixed right-0 top-0 z-50 flex h-full w-80 flex-col bg-white shadow-xl"
+        data-testid="flag-detail-panel"
+      >
+        <div className="flex items-center justify-between border-b border-gray-200 p-4">
+          <span
+            className={`rounded px-2 py-1 text-xs font-bold uppercase ${SEVERITY_CLASSES[flag.severity] ?? 'bg-gray-100 text-gray-800'}`}
+          >
+            {flag.severity}
+          </span>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+            data-testid="flag-panel-close"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="flex-1 overflow-auto p-4">
+          <p className="mb-4 text-sm text-gray-800">{flag.message}</p>
+          {flag.status === 'dismissed' && (
+            <div className="rounded bg-gray-50 p-3 text-xs text-gray-500">
+              <span className="font-medium">Dismissed</span>
+              {flag.dismissed_reason && (
+                <p className="mt-1">{flag.dismissed_reason}</p>
+              )}
+            </div>
+          )}
+        </div>
+        {flag.status === 'active' && (
+          <div className="border-t border-gray-200 p-4">
+            <button
+              onClick={() => setShowDismissModal(true)}
+              className="w-full rounded bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+              data-testid="dismiss-flag-btn"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+      </div>
+      {showDismissModal && (
+        <DismissModal
+          flag={flag}
+          onClose={() => setShowDismissModal(false)}
+          onSuccess={() => {
+            setShowDismissModal(false)
+            onDismissSuccess()
+            onClose()
+          }}
+        />
+      )}
+    </>
+  )
+}
+
+function DismissModal({
+  flag,
+  onClose,
+  onSuccess,
+}: {
+  flag: AuditFlag
+  onClose: () => void
+  onSuccess: () => void
+}) {
+  const [reason, setReason] = useState('')
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      await api.post(`/audit-flags/${flag.id}/dismiss/`, { reason })
+    },
+    onSuccess,
+  })
+
+  return (
+    <div
+      className="fixed inset-0 z-60 flex items-center justify-center bg-black/50"
+      data-testid="dismiss-modal"
+    >
+      <div className="w-96 rounded-lg bg-white p-6 shadow-xl">
+        <h3 className="mb-4 text-lg font-semibold">Dismiss Flag</h3>
+        <p className="mb-3 text-sm text-gray-600">Optionally provide a reason for dismissal:</p>
+        <textarea
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          className="mb-4 w-full rounded border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          rows={3}
+          placeholder="Reason (optional)"
+          data-testid="dismiss-reason-input"
+        />
+        {mutation.isError && (
+          <p className="mb-3 text-sm text-red-600">Failed to dismiss flag. Please try again.</p>
+        )}
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="rounded px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
+            data-testid="dismiss-cancel-btn"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => mutation.mutate()}
+            disabled={mutation.isPending}
+            className="rounded bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+            data-testid="dismiss-confirm-btn"
+          >
+            {mutation.isPending ? 'Dismissing…' : 'Confirm Dismiss'}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -236,46 +409,62 @@ function PhotoGrid({ versionId, roomId }: { versionId: string; roomId: string })
 
 const columnHelper = createColumnHelper<LogEntry>()
 
-const columns = [
-  columnHelper.accessor('fixture_id', {
-    header: 'Fixture ID',
-    cell: (info) => info.getValue() || '—',
-  }),
-  columnHelper.accessor('qty', {
-    header: 'Qty',
-  }),
-  columnHelper.accessor('wattage', {
-    header: 'Wattage',
-    cell: (info) => info.getValue() ?? '—',
-  }),
-  columnHelper.accessor('switch_type', {
-    header: 'Switch',
-    cell: (info) => info.getValue() || '—',
-  }),
-  columnHelper.accessor('controls', {
-    header: 'Controls',
-    cell: (info) => info.getValue() || '—',
-  }),
-  columnHelper.accessor('mount_type', {
-    header: 'Mount',
-    cell: (info) => info.getValue() || '—',
-  }),
-  columnHelper.display({
-    id: 'flags',
-    header: 'Flags',
-    cell: (info) => <FlagIcons row={info.row.original} />,
-    enableSorting: false,
-  }),
-  columnHelper.accessor('notes', {
-    header: 'Notes',
-    cell: (info) => info.getValue() || '—',
-    enableSorting: false,
-  }),
-]
+function makeColumns(
+  flagsByEntry: Record<number, AuditFlag[]>,
+  onFlagSelect: (flag: AuditFlag) => void,
+) {
+  return [
+    columnHelper.accessor('fixture_id', {
+      header: 'Fixture ID',
+      cell: (info) => info.getValue() || '—',
+    }),
+    columnHelper.accessor('qty', {
+      header: 'Qty',
+    }),
+    columnHelper.accessor('wattage', {
+      header: 'Wattage',
+      cell: (info) => info.getValue() ?? '—',
+    }),
+    columnHelper.accessor('switch_type', {
+      header: 'Switch',
+      cell: (info) => info.getValue() || '—',
+    }),
+    columnHelper.accessor('controls', {
+      header: 'Controls',
+      cell: (info) => info.getValue() || '—',
+    }),
+    columnHelper.accessor('mount_type', {
+      header: 'Mount',
+      cell: (info) => info.getValue() || '—',
+    }),
+    columnHelper.display({
+      id: 'flags',
+      header: 'Flags',
+      cell: (info) => <FlagIcons row={info.row.original} />,
+      enableSorting: false,
+    }),
+    columnHelper.display({
+      id: 'audit_flags',
+      header: 'Issues',
+      cell: (info) => {
+        const entryFlags = flagsByEntry[info.row.original.id] ?? []
+        return <AuditFlagBadges flags={entryFlags} onSelect={onFlagSelect} />
+      },
+      enableSorting: false,
+    }),
+    columnHelper.accessor('notes', {
+      header: 'Notes',
+      cell: (info) => info.getValue() || '—',
+      enableSorting: false,
+    }),
+  ]
+}
 
 function LogEntriesTable({ versionId, roomId }: { versionId: string; roomId: string }) {
+  const queryClient = useQueryClient()
   const [sorting, setSorting] = useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = useState('')
+  const [selectedFlag, setSelectedFlag] = useState<AuditFlag | null>(null)
 
   const { data: entries = [], isLoading, error } = useQuery<LogEntry[]>({
     queryKey: ['room-log-entries', versionId, roomId],
@@ -286,6 +475,28 @@ function LogEntriesTable({ versionId, roomId }: { versionId: string; roomId: str
       return res.data
     },
   })
+
+  const { data: auditFlags = [] } = useQuery<AuditFlag[]>({
+    queryKey: ['room-audit-flags', versionId, roomId],
+    queryFn: async () => {
+      const res = await api.get<AuditFlag[]>(
+        `/audit-versions/${versionId}/rooms/${roomId}/audit-flags/`,
+      )
+      return res.data
+    },
+  })
+
+  const flagsByEntry: Record<number, AuditFlag[]> = {}
+  for (const flag of auditFlags) {
+    if (!flagsByEntry[flag.log_entry_id]) flagsByEntry[flag.log_entry_id] = []
+    flagsByEntry[flag.log_entry_id].push(flag)
+  }
+
+  const handleDismissSuccess = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['room-audit-flags', versionId, roomId] })
+  }, [queryClient, versionId, roomId])
+
+  const columns = makeColumns(flagsByEntry, setSelectedFlag)
 
   const table = useReactTable({
     data: entries,
@@ -302,62 +513,71 @@ function LogEntriesTable({ versionId, roomId }: { versionId: string; roomId: str
   if (error) return <div className="py-4 text-sm text-red-600">Failed to load log entries.</div>
 
   return (
-    <div data-testid="log-entries-table">
-      <div className="mb-3 flex items-center gap-2">
-        <input
-          type="text"
-          placeholder="Filter entries…"
-          value={globalFilter}
-          onChange={(e) => setGlobalFilter(e.target.value)}
-          className="rounded border border-gray-300 px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-          data-testid="log-entries-filter"
-        />
-        <span className="text-sm text-gray-500">
-          {table.getRowModel().rows.length} row{table.getRowModel().rows.length !== 1 ? 's' : ''}
-        </span>
-      </div>
-      <div className="overflow-x-auto rounded border border-gray-200">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-50">
-            {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id}>
-                {hg.headers.map((header) => (
-                  <th
-                    key={header.id}
-                    className="px-3 py-2 text-left font-medium text-gray-600"
-                    onClick={header.column.getToggleSortingHandler()}
-                    style={{ cursor: header.column.getCanSort() ? 'pointer' : 'default' }}
-                  >
-                    {flexRender(header.column.columnDef.header, header.getContext())}
-                    {header.column.getIsSorted() === 'asc' && ' ↑'}
-                    {header.column.getIsSorted() === 'desc' && ' ↓'}
-                  </th>
-                ))}
-              </tr>
-            ))}
-          </thead>
-          <tbody>
-            {table.getRowModel().rows.length === 0 ? (
-              <tr>
-                <td colSpan={columns.length} className="px-3 py-6 text-center text-gray-400">
-                  No log entries found.
-                </td>
-              </tr>
-            ) : (
-              table.getRowModel().rows.map((row) => (
-                <tr key={row.id} className="border-t border-gray-100 hover:bg-gray-50">
-                  {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-3 py-2">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
+    <>
+      <div data-testid="log-entries-table">
+        <div className="mb-3 flex items-center gap-2">
+          <input
+            type="text"
+            placeholder="Filter entries…"
+            value={globalFilter}
+            onChange={(e) => setGlobalFilter(e.target.value)}
+            className="rounded border border-gray-300 px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            data-testid="log-entries-filter"
+          />
+          <span className="text-sm text-gray-500">
+            {table.getRowModel().rows.length} row{table.getRowModel().rows.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+        <div className="overflow-x-auto rounded border border-gray-200">
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-50">
+              {table.getHeaderGroups().map((hg) => (
+                <tr key={hg.id}>
+                  {hg.headers.map((header) => (
+                    <th
+                      key={header.id}
+                      className="px-3 py-2 text-left font-medium text-gray-600"
+                      onClick={header.column.getToggleSortingHandler()}
+                      style={{ cursor: header.column.getCanSort() ? 'pointer' : 'default' }}
+                    >
+                      {flexRender(header.column.columnDef.header, header.getContext())}
+                      {header.column.getIsSorted() === 'asc' && ' ↑'}
+                      {header.column.getIsSorted() === 'desc' && ' ↓'}
+                    </th>
                   ))}
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ))}
+            </thead>
+            <tbody>
+              {table.getRowModel().rows.length === 0 ? (
+                <tr>
+                  <td colSpan={columns.length} className="px-3 py-6 text-center text-gray-400">
+                    No log entries found.
+                  </td>
+                </tr>
+              ) : (
+                table.getRowModel().rows.map((row) => (
+                  <tr key={row.id} className="border-t border-gray-100 hover:bg-gray-50">
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id} className="px-3 py-2">
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+      {selectedFlag !== null && (
+        <FlagDetailPanel
+          flag={selectedFlag}
+          onClose={() => setSelectedFlag(null)}
+          onDismissSuccess={handleDismissSuccess}
+        />
+      )}
+    </>
   )
 }
 

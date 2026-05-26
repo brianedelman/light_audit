@@ -1,6 +1,7 @@
 from ninja import ModelSchema
 from ninja import Schema
 
+from light_audit.audit.models import AuditFlag
 from light_audit.audit.models import AuditVersion
 from light_audit.audit.models import Building
 from light_audit.audit.models import Floor
@@ -94,6 +95,21 @@ class PhotoSchema(ModelSchema):
             "space_name", "notes", "taken_at", "mime_type",
             "width", "height", "created", "modified",
         ]
+
+
+class AuditFlagSchema(ModelSchema):
+    log_entry_id: int
+
+    class Meta:
+        model = AuditFlag
+        fields = [
+            "id", "severity", "message", "status",
+            "dismissed_reason", "dismissed_at", "created", "modified",
+        ]
+
+    @staticmethod
+    def resolve_log_entry_id(obj: AuditFlag) -> int:
+        return obj.log_entry_id
 
 
 class FloorWithRoomsSchema(ModelSchema):
