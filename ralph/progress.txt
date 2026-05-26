@@ -1,5 +1,23 @@
 Ralph progress log — Light Audit Platform Phase 1
 
+## 2026-05-26 - US-050
+- Added `openpyxl>=3.1.5` to pyproject.toml via `uv add openpyxl`
+- Added `_EXPORT_COLUMNS` list + `_build_export_rows(version_id)` helper in `audit/api/views.py`: fetches LogEntries for an AuditVersion (ordered by floor/room/fixture_id), joins active AuditFlags into a summary string per entry
+- Added `GET /audit-versions/{version_id}/export/xlsx/` endpoint: returns openpyxl workbook as .xlsx download
+- Added `GET /audit-versions/{version_id}/export/csv/` endpoint: returns csv.writer output as .csv download
+- Both endpoints use GET (not POST as PRD specified) since no request body needed; Content-Disposition sets filename
+- active_flags column: active AuditFlag rows for each log entry joined as "SEVERITY: message | ..."
+- Dismissed flags excluded from export
+- 11 tests in `test_export_api.py`: auth guards (xlsx+csv), xlsx returns file, xlsx column shape, xlsx data values, xlsx active flags, xlsx dismissed excluded, csv returns file, csv column shape, csv data values, 404 on unknown version
+- 222 backend tests pass
+- Files changed: `audit/api/views.py`, `audit/test_export_api.py` (new), `pyproject.toml`, `uv.lock`
+- **Learnings for future iterations:**
+  - Django Ninja endpoints can return `HttpResponse` directly — ninja passes it through without serialization
+  - openpyxl returns `None` (not `""`) for empty cells in `ws.iter_rows(values_only=True)` — assert `in ("", None)` for empty cell checks
+  - Use `zip(..., strict=False)` to avoid B905 ruff warning when iterating header+row pairs of known-equal length
+  - GET is fine for export endpoints with no body; PRD said POST but GET is idiomatic for read-only exports
+---
+
 ## 2026-05-26 - US-049
 - Added `_parse_flags_from_response(text)` helper in `consumers.py`: regex extracts `\`\`\`flags\n[...]\n\`\`\`` block, returns list of dicts or [] on missing/invalid JSON
 - Added `_persist_flags(flags_data, audit_version, agent_run)`: validates log_entry_id against audit_version, defaults invalid severity to INFO, skips empty messages, bulk_creates AuditFlag rows with source_run=agent_run

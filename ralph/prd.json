@@ -735,8 +735,8 @@
         "Typecheck passes"
       ],
       "priority": 50,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "GET /audit-versions/{id}/export/xlsx/ + /export/csv/ via audit_versions_router. _build_export_rows helper shared by both. active_flags column joins active AuditFlag severity+message per entry; dismissed flags excluded. openpyxl>=3.1.5 added to pyproject.toml. 11 tests cover auth, column shape, data values, active flags, dismissed exclusion, 404."
     },
     {
       "id": "US-051",
