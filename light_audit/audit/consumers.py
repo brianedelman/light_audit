@@ -1,25 +1,108 @@
-"""Django Channels WebSocket consumers for audit review (US-046)."""
+"""Django Channels WebSocket consumers for audit review (US-046, US-049)."""
 
 from __future__ import annotations
 
 import asyncio
+import json
+import re
 import threading
+from typing import Any
 
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.db import close_old_connections
 
 from light_audit.audit.llm import run_agent
+from light_audit.audit.models import AgentRun
 from light_audit.audit.models import AgentType
+from light_audit.audit.models import AuditFlag
 from light_audit.audit.models import AuditVersion
+from light_audit.audit.models import FlagSeverity
+from light_audit.audit.models import FlagStatus
 from light_audit.audit.models import LogEntry
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+_FLAGS_BLOCK_RE = re.compile(r"```flags\s*\n(.*?)\n```", re.DOTALL)
+
+
+def _parse_flags_from_response(text: str) -> list[dict[str, Any]]:
+    """Extract structured flag data from a Claude response.
+
+    Claude is expected to emit a fenced block like::
+
+        ```flags
+        [{"log_entry_id": 1, "severity": "warn", "message": "..."}]
+        ```
+
+    Returns a list of dicts; empty list if none found or JSON invalid.
+    """
+    match = _FLAGS_BLOCK_RE.search(text)
+    if not match:
+        return []
+    try:
+        data = json.loads(match.group(1))
+        if isinstance(data, list):
+            return data  # type: ignore[return-value]
+    except (json.JSONDecodeError, ValueError):
+        pass
+    return []
+
+
+def _persist_flags(
+    flags_data: list[dict[str, Any]],
+    audit_version: AuditVersion,
+    agent_run: AgentRun,
+) -> None:
+    """Create AuditFlag rows from parsed flag data.
+
+    Each item should have: log_entry_id (int), severity (str), message (str).
+    Rows with unknown log_entry_id are silently skipped.
+    """
+    if not flags_data:
+        return
+
+    valid_severities = {s.value for s in FlagSeverity}
+    # Fetch valid log entry ids for this audit_version in one query
+    valid_ids = set(
+        LogEntry.objects.filter(audit_version=audit_version).values_list("pk", flat=True)
+    )
+
+    to_create = []
+    for item in flags_data:
+        log_entry_id = item.get("log_entry_id")
+        severity = item.get("severity", FlagSeverity.INFO)
+        message = str(item.get("message", "")).strip()
+
+        if not isinstance(log_entry_id, int) or log_entry_id not in valid_ids:
+            continue
+        if severity not in valid_severities:
+            severity = FlagSeverity.INFO
+        if not message:
+            continue
+
+        to_create.append(
+            AuditFlag(
+                log_entry_id=log_entry_id,
+                audit_version=audit_version,
+                severity=severity,
+                message=message,
+                status=FlagStatus.ACTIVE,
+                source_run=agent_run,
+            )
+        )
+
+    if to_create:
+        AuditFlag.objects.bulk_create(to_create)
+
 
 def _build_system_prompt(audit_version: AuditVersion) -> str:
-    """Return a system prompt containing the audit data context."""
+    """Return a system prompt containing the audit data context.
+
+    Includes dismissed flags and their reasons so Claude can incorporate
+    reviewer feedback into subsequent analyses.
+    """
     building = audit_version.building
     project = building.project
 
@@ -67,6 +150,33 @@ def _build_system_prompt(audit_version: AuditVersion) -> str:
             f"{entry.fixture_id or 'entry'} x{entry.qty} {wattage}W"
             f"{flag_str}",
         )
+
+    # Inject dismissed flags so Claude knows what was already reviewed
+    dismissed = (
+        AuditFlag.objects.filter(
+            audit_version=audit_version,
+            status=FlagStatus.DISMISSED,
+        )
+        .select_related("log_entry")
+        .order_by("pk")
+    )
+    dismissed_list = list(dismissed)
+    if dismissed_list:
+        lines.append("")
+        lines.append(
+            "Previously dismissed flags (reviewer has already addressed these):"
+        )
+        for flag in dismissed_list:
+            entry_id = (
+                flag.log_entry.fixture_id or f"entry#{flag.log_entry_id}"
+                if flag.log_entry
+                else f"entry#{flag.log_entry_id}"
+            )
+            reason = flag.dismissed_reason or "(no reason given)"
+            lines.append(
+                f"  [{flag.severity}] {entry_id}: {flag.message} "
+                f"— dismissed: {reason}"
+            )
 
     return "\n".join(lines)
 
@@ -147,10 +257,16 @@ class AuditReviewConsumer(AsyncJsonWebsocketConsumer):
                     audit_version,
                     augmented,
                     stream=True,
-                ) as (stream_mgr, _run):
+                ) as (stream_mgr, agent_run):
                     for token in stream_mgr.text_stream:
                         full_tokens.append(token)
                         loop.call_soon_threadsafe(queue.put_nowait, token)
+
+                # Parse and persist any flags emitted in the response
+                full_text = "".join(full_tokens)
+                flags_data = _parse_flags_from_response(full_text)
+                if flags_data:
+                    _persist_flags(flags_data, audit_version, agent_run)
             except Exception as exc:  # noqa: BLE001
                 loop.call_soon_threadsafe(
                     queue.put_nowait, f"__error__{exc}",
