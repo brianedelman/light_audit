@@ -623,8 +623,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 43,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "pannellum installed as side-effect import (IIFE global); PanoramaViewer component accesses window.pannellum.viewer(); PhotoGrid dispatches panorama photo_type to PanoramaViewer, others to Lightbox. Mock pannellum/build/pannellum.js + inject window.pannellum in tests."
     },
     {
       "id": "US-044",

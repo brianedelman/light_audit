@@ -2,6 +2,20 @@ Ralph progress log — Light Audit Platform Phase 1
 Branch: ralph/phase-1
 Started: 2026-05-24
 
+## 2026-05-25 - US-043
+- Installed `pannellum` npm package (2.5.7) — IIFE browser global library, no ES module exports
+- Created `frontend/src/types/pannellum.d.ts`: side-effect module declaration + `Window.pannellum` interface
+- Created `frontend/src/components/PanoramaViewer.tsx`: imports pannellum as side-effect, calls `window.pannellum.viewer()` with equirectangular config; Esc key closes; destroy() on unmount
+- Updated `AuditVersionRoomPage.tsx` PhotoGrid: tracks `panoramaPhoto` state; `handleThumbClick` dispatches photo_type='panorama' → PanoramaViewer, others → Lightbox
+- 4 frontend tests in `panorama-viewer.test.tsx`: panorama opens viewer not lightbox, non-panorama opens lightbox, close button, Esc key
+- All 135 frontend tests pass; `tsc -b && vite build` clean
+- Files changed: `pages/AuditVersionRoomPage.tsx`, `components/PanoramaViewer.tsx` (new), `types/pannellum.d.ts` (new), `__tests__/panorama-viewer.test.tsx` (new), `package.json`, `package-lock.json`
+- **Learnings for future iterations:**
+  - Pannellum is IIFE-only (sets `window.pannellum`); import as `import 'pannellum/build/pannellum.js'` for side-effect; access via `window.pannellum.viewer()`
+  - In tests: `vi.mock('pannellum/build/pannellum.js', () => ({}))` + `Object.defineProperty(window, 'pannellum', { value: { viewer: vi.fn(...) } })` to inject the global
+  - Don't import from 'pannellum' directly — Rollup/Vite can't find named exports in the IIFE bundle
+---
+
 ## 2026-05-25 - US-042
 - Backend: Added `PhotoSchema` to `api/schema.py` with id, photo_type, public_url, thumbnail_url, space_name, notes, taken_at, mime_type, width, height fields
 - Backend: Added `GET /audit-versions/{version_id}/rooms/{room_id}/photos/` endpoint; filters `upload_status=uploaded`
