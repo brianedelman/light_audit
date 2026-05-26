@@ -12,6 +12,7 @@ Started: Sun May 24 11:20:00 EDT 2026
 - Use `annotate()` on querysets to avoid N+1 for computed counts
 - TanStack Table: `createColumnHelper<T>()` + `getCoreRowModel`/`getSortedRowModel` for sortable tables
 - `useParams({ from: '/route/$param' })` for type-safe param extraction in TanStack Router
+- Shared/reusable UI components go in `frontend/src/components/`
 
 ---
 
@@ -39,4 +40,16 @@ Started: Sun May 24 11:20:00 EDT 2026
   - useParams requires `{ from: '/route/$param' }` for type-safe param extraction
   - AuditVersionSchema now has created_by_name field — no need to add it again
   - Expandable UI pattern: useState<Set<number>> for tracking expanded items
+---
+
+## 2026-05-25 - US-040
+- Implemented audit version floor/room navigation with sidebar tree
+- Backend: added RoomSchema, FloorWithRoomsSchema with nested rooms via resolve_rooms; added GET /audit-versions/{id}/floors/ and GET /audit-versions/{id}/rooms/{room_id}/ endpoints
+- Frontend: FloorTreeSidebar shared component (collapsible tree, useNavigate), AuditVersionPage, AuditVersionFloorPage, AuditVersionRoomPage; 3 new routes in router.tsx
+- Files changed: light_audit/audit/api/schema.py, light_audit/audit/api/views.py, frontend/src/components/FloorTreeSidebar.tsx (new), frontend/src/pages/AuditVersionPage.tsx (new), frontend/src/pages/AuditVersionFloorPage.tsx (new), frontend/src/pages/AuditVersionRoomPage.tsx (new), frontend/src/router.tsx, frontend/src/__tests__/audit-version-navigation.test.tsx (new)
+- **Learnings for future iterations:**
+  - FloorTreeSidebar is reusable — accepts versionId + optional activeFloorId/activeRoomId for highlight
+  - Floor.audit_version and Room.audit_version FKs allow filtering by version directly
+  - Shared components go in frontend/src/components/
+  - 119 tests pass after this story
 ---

@@ -576,8 +576,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 40,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "FloorTreeSidebar shared component fetches floors+rooms; 3 pages (AuditVersionPage, AuditVersionFloorPage, AuditVersionRoomPage); backend adds /audit-versions/{id}/floors/ and /audit-versions/{id}/rooms/{room_id}/ endpoints. 7 frontend tests + tsc clean."
     },
     {
       "id": "US-041",
