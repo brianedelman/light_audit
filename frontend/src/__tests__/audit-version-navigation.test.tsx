@@ -17,6 +17,10 @@ vi.mock('../lib/api', () => ({
   },
 }))
 
+vi.mock('../lib/ws', () => ({
+  connectWs: () => ({ send: vi.fn(), close: vi.fn() }),
+}))
+
 vi.mock('@tanstack/react-router', async () => {
   const actual = await vi.importActual<typeof import('@tanstack/react-router')>('@tanstack/react-router')
   return {
@@ -104,6 +108,7 @@ describe('AuditVersionPage', () => {
       if (url === '/auth/me/') return Promise.resolve({ data: { email: 'u@e.com', name: 'U', url: '/api/users/1/' } })
       if (url === '/audit-versions/5/') return Promise.resolve({ data: VERSION })
       if (url === '/audit-versions/5/floors/') return Promise.resolve({ data: FLOORS })
+      if (url === '/predefined-prompts/') return Promise.resolve({ data: [] })
       return Promise.reject(new Error(`unmocked GET ${url}`))
     })
   })

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useParams } from '@tanstack/react-router'
 import api from '../lib/api'
 import FloorTreeSidebar from '../components/FloorTreeSidebar'
+import ChatPanel from '../components/ChatPanel'
 
 interface AuditVersion {
   id: number
@@ -61,6 +62,9 @@ export default function AuditVersionPage() {
             </div>
           )}
         </dl>
+      </div>
+      <div className="w-96 shrink-0">
+        <ChatPanel versionId={versionId} />
       </div>
     </div>
   )
