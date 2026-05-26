@@ -12,6 +12,7 @@ import {
 } from '@tanstack/react-table'
 import api from '../lib/api'
 import FloorTreeSidebar from '../components/FloorTreeSidebar'
+import PanoramaViewer from '../components/PanoramaViewer'
 
 interface Photo {
   id: number
@@ -162,6 +163,7 @@ function Lightbox({
 
 function PhotoGrid({ versionId, roomId }: { versionId: string; roomId: string }) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const [panoramaPhoto, setPanoramaPhoto] = useState<Photo | null>(null)
 
   const { data: photos = [], isLoading } = useQuery<Photo[]>({
     queryKey: ['room-photos', versionId, roomId],
@@ -172,6 +174,14 @@ function PhotoGrid({ versionId, roomId }: { versionId: string; roomId: string })
       return res.data
     },
   })
+
+  const handleThumbClick = useCallback((photo: Photo, idx: number) => {
+    if (photo.photo_type === 'panorama') {
+      setPanoramaPhoto(photo)
+    } else {
+      setLightboxIndex(idx)
+    }
+  }, [])
 
   const handlePrev = useCallback(() => {
     setLightboxIndex((i) => (i !== null && i > 0 ? i - 1 : i))
@@ -193,7 +203,7 @@ function PhotoGrid({ versionId, roomId }: { versionId: string; roomId: string })
           <button
             key={photo.id}
             className="overflow-hidden rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            onClick={() => setLightboxIndex(idx)}
+            onClick={() => handleThumbClick(photo, idx)}
             data-testid={`photo-thumb-${photo.id}`}
           >
             <img
@@ -204,6 +214,13 @@ function PhotoGrid({ versionId, roomId }: { versionId: string; roomId: string })
           </button>
         ))}
       </div>
+      {panoramaPhoto !== null && (
+        <PanoramaViewer
+          url={panoramaPhoto.public_url}
+          alt={panoramaPhoto.space_name || panoramaPhoto.photo_type}
+          onClose={() => setPanoramaPhoto(null)}
+        />
+      )}
       {lightboxIndex !== null && (
         <Lightbox
           photos={photos}
