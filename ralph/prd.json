@@ -1,7 +1,7 @@
 {
   "project": "Light Audit Platform",
   "branchName": "ralph/phase-1",
-  "description": "Phase 1: Django+React internal platform — PWA audit tool, sync to backend, R2 media, audit review with streaming Claude agent, project landing + versioning.",
+  "description": "Phase 1: Django+React internal platform \u2014 PWA audit tool, sync to backend, R2 media, audit review with streaming Claude agent, project landing + versioning.",
   "userStories": [
     {
       "id": "US-001",
@@ -73,7 +73,7 @@
       "title": "Configure Vite proxy + frontend API client",
       "description": "As a developer, I need Vite dev server to proxy /api and /ws to Django, and a typed fetch client.",
       "acceptanceCriteria": [
-        "vite.config.ts proxies /api → http://localhost:8001 and /ws → ws://localhost:8001",
+        "vite.config.ts proxies /api \u2192 http://localhost:8001 and /ws \u2192 ws://localhost:8001",
         "src/lib/api.ts: axios instance with baseURL=/api, CSRF + auth handling",
         "src/lib/ws.ts: WebSocket helper that connects to /ws/<path>",
         "TanStack QueryClient provider mounted in src/main.tsx",
@@ -130,7 +130,7 @@
     },
     {
       "id": "US-009",
-      "title": "Link Building → Project, migrate client field",
+      "title": "Link Building \u2192 Project, migrate client field",
       "description": "As a developer, I need Building.project FK and existing Building.client value migrated onto Project.",
       "acceptanceCriteria": [
         "Building gains project = FK(Project, related_name='buildings', null=True initially)",
@@ -313,10 +313,10 @@
       "title": "R2 media: presigned multipart upload endpoints",
       "description": "As a PWA client, I want to upload large files directly to R2 via S3 multipart.",
       "acceptanceCriteria": [
-        "POST /api/media/multipart/start → creates Photo row (status=uploading), calls R2 CreateMultipartUpload, returns upload_id + storage_path",
-        "POST /api/media/multipart/sign-part → returns presigned PUT URL for a given part_number",
-        "POST /api/media/multipart/complete → calls R2 CompleteMultipartUpload with part ETags, updates Photo (status=uploaded, public_url)",
-        "POST /api/media/multipart/abort → calls AbortMultipartUpload",
+        "POST /api/media/multipart/start \u2192 creates Photo row (status=uploading), calls R2 CreateMultipartUpload, returns upload_id + storage_path",
+        "POST /api/media/multipart/sign-part \u2192 returns presigned PUT URL for a given part_number",
+        "POST /api/media/multipart/complete \u2192 calls R2 CompleteMultipartUpload with part ETags, updates Photo (status=uploaded, public_url)",
+        "POST /api/media/multipart/abort \u2192 calls AbortMultipartUpload",
         "Pytest covers each endpoint with mocked boto3",
         "Typecheck passes"
       ],
@@ -506,8 +506,8 @@
       "acceptanceCriteria": [
         "Polling loop runs every 10s while online + PWA visible",
         "Audit items POST to /api/audits/sync",
-        "Media items use R2 multipart endpoints (start → sign-part → complete)",
-        "Exponential backoff on failure (10s → 30s → 2m → 10m)",
+        "Media items use R2 multipart endpoints (start \u2192 sign-part \u2192 complete)",
+        "Exponential backoff on failure (10s \u2192 30s \u2192 2m \u2192 10m)",
         "UI status indicator shows queue length + active uploads",
         "Frontend tests cover drain + backoff",
         "Typecheck passes",
@@ -524,7 +524,7 @@
       "acceptanceCriteria": [
         "Route /projects renders list via TanStack Query against /api/projects",
         "Each row: name, client, status, building count",
-        "Click row → /projects/{id}",
+        "Click row \u2192 /projects/{id}",
         "Frontend tests cover list render + navigation",
         "Typecheck passes",
         "Verify in browser using dev-browser skill"
@@ -566,11 +566,11 @@
     },
     {
       "id": "US-040",
-      "title": "Frontend: building → floor → room navigation",
+      "title": "Frontend: building \u2192 floor \u2192 room navigation",
       "description": "As a reviewer, I want to navigate into a specific room within an audit version.",
       "acceptanceCriteria": [
         "Routes: /audit-versions/{id}, /audit-versions/{id}/floors/{floor_id}, /audit-versions/{id}/rooms/{room_id}",
-        "Sidebar tree of floors → rooms; click navigates",
+        "Sidebar tree of floors \u2192 rooms; click navigates",
         "Frontend tests cover tree render + navigation",
         "Typecheck passes",
         "Verify in browser using dev-browser skill"
@@ -614,7 +614,7 @@
     {
       "id": "US-043",
       "title": "Frontend: panorama viewer (Pannellum)",
-      "description": "As a reviewer, I want 360° panoramas to open in Pannellum, not as flat images.",
+      "description": "As a reviewer, I want 360\u00b0 panoramas to open in Pannellum, not as flat images.",
       "acceptanceCriteria": [
         "Pannellum installed; PanoramaViewer component wraps it",
         "Photos with photo_type='panorama' open in PanoramaViewer instead of standard lightbox",
@@ -633,7 +633,7 @@
       "acceptanceCriteria": [
         "Flag column in log entries table shows severity-colored badges",
         "Click badge opens flag detail panel with message + dismiss button",
-        "Dismiss opens modal asking for reason → POST /api/audit-flags/{id}/dismiss { reason } (backend endpoint added)",
+        "Dismiss opens modal asking for reason \u2192 POST /api/audit-flags/{id}/dismiss { reason } (backend endpoint added)",
         "Pytest covers dismiss endpoint",
         "Frontend tests cover badge + dismiss modal flow",
         "Typecheck passes",
@@ -656,7 +656,7 @@
         "Typecheck passes"
       ],
       "priority": 45,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
@@ -760,7 +760,7 @@
       "acceptanceCriteria": [
         "Three buttons: Export CSV, Export XLSX, Export DOCX",
         "Each triggers download via blob URL",
-        "Frontend tests cover button → API call wiring (mocked)",
+        "Frontend tests cover button \u2192 API call wiring (mocked)",
         "Typecheck passes",
         "Verify in browser using dev-browser skill"
       ],
@@ -837,8 +837,8 @@
       "title": "Auth API: password reset flow",
       "description": "As a user, I want to reset my password via email link.",
       "acceptanceCriteria": [
-        "POST /api/auth/password-reset → sends email with token link",
-        "POST /api/auth/password-reset/confirm → accepts token + new password",
+        "POST /api/auth/password-reset \u2192 sends email with token link",
+        "POST /api/auth/password-reset/confirm \u2192 accepts token + new password",
         "Email template renders with reset URL pointing to frontend route",
         "Mailpit receives email in dev",
         "Pytest covers token issue + confirm + invalid-token reject",

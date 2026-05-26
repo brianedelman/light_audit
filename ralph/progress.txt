@@ -1,4 +1,19 @@
 Ralph progress log — Light Audit Platform Phase 1
+
+## 2026-05-25 - US-045
+- Added `anthropic==0.57.0` to pyproject.toml dependencies; installed via `uv add anthropic`
+- Added `ANTHROPIC_API_KEY` and `CLAUDE_MODEL` settings to `config/settings/base.py`
+- Created `light_audit/audit/llm.py`: `run_agent(agent_type, user, project, audit_version, messages, *, stream=False, max_tokens=4096)` context manager using `@contextmanager`; creates AgentRun on enter (status=running); marks ok/error on exit; `Generator` type hint moved to `TYPE_CHECKING` block (TC003)
+- Created `light_audit/audit/test_llm.py`: 5 tests — creates AgentRun, marks error on exception, records prompt, links project/av, plus AST-scan enforcement test that no file outside llm.py imports anthropic directly
+- 187 backend tests pass; ruff clean
+- Files changed: `pyproject.toml`, `config/settings/base.py`, `audit/llm.py` (new), `audit/test_llm.py` (new), `uv.lock`
+- **Learnings for future iterations:**
+  - `run_agent` is a `@contextmanager` yielding `(response_or_stream, agent_run)` tuple; stream=True path yields the Anthropic stream manager
+  - `noqa: PLR0913` needed on `run_agent` (7 args > 5 threshold)
+  - `Generator` from `collections.abc` must go in `TYPE_CHECKING` block to satisfy TC003 when used only in return annotation with `from __future__ import annotations`
+  - Combining `pytest.raises(...)` + `run_agent(...)` in a single `with (...)` tuple works and satisfies SIM117
+  - Enforce no-direct-SDK-import via AST scan test: `ast.walk` on each .py file outside llm.py
+---
 Branch: ralph/phase-1
 Started: 2026-05-24
 
