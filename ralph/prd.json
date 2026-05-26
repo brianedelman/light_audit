@@ -592,8 +592,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 41,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Backend: GET /audit-versions/{id}/rooms/{room_id}/log-entries/ + LogEntrySchema. Frontend: LogEntriesTable component with TanStack Table (sort by fixture_id/qty/wattage/switch/controls/mount; global filter input; flag boolean columns rendered as colored badges). 5 frontend tests: render, flags, values, sort, filter, empty state."
     },
     {
       "id": "US-042",

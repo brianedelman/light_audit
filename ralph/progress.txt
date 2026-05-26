@@ -2,6 +2,19 @@ Ralph progress log — Light Audit Platform Phase 1
 Branch: ralph/phase-1
 Started: 2026-05-24
 
+## 2026-05-25 - US-041
+- Backend: Added `LogEntrySchema` to `api/schema.py` with fixture_id, qty, wattage, switch_type, controls, mount_type, notes, and all 10 boolean flag fields
+- Backend: Added `GET /audit-versions/{version_id}/rooms/{room_id}/log-entries/` endpoint to `api/views.py`; validates room belongs to version
+- Frontend: Updated `AuditVersionRoomPage.tsx` — added `LogEntriesTable` sub-component with TanStack Table (sortable: fixture_id, qty, wattage, switch_type, controls, mount_type; global filter input; flag booleans rendered as colored amber badges with short labels like IS/EMBB/AR/WG etc.)
+- Frontend tests: 5 tests in `room-log-entries.test.tsx` covering render, flag icons, values, sort (asc/desc on fixture_id), global filter, empty state
+- All 172 backend tests pass; all 125 frontend tests pass; schema.py ruff-clean
+- Files changed: `api/schema.py`, `api/views.py`, `pages/AuditVersionRoomPage.tsx`, `__tests__/room-log-entries.test.tsx` (new)
+- **Learnings for future iterations:**
+  - Boolean flag columns best rendered as display columns (not accessor) so sorting is disabled; use `columnHelper.display` for non-data cells
+  - LogEntry linked to Room via FK; no direct audit_version FK on LogEntry — filter via `room__audit_version_id` or validate room via `get_object_or_404(Room, pk=room_id, audit_version_id=version_id)`
+  - TanStack Table `getFilteredRowModel` enables global filter; pass `globalFilter` state + `onGlobalFilterChange` + `getFilteredRowModel()` in table config
+---
+
 ## 2026-05-24 - US-028
 - Created `html_app/sw.js`: cache-first service worker with `CACHE_VERSION = "v1"` and `CACHE_NAME = "audit-pwa-v1"`; precaches index.html, manifest.json, icons; cleans old cache versions on activate; caches CDN assets on network fetch
 - Added SW registration inline `<script>` to `html_app/app.html` (after app.js, checks `"serviceWorker" in navigator`)
