@@ -1,5 +1,23 @@
 Ralph progress log — Light Audit Platform Phase 1
 
+## 2026-05-26 - US-055
+- Created `docs/html-app-data-sync-review.md`: comprehensive field-by-field mapping of PWA sync payload vs Django models
+- Enumerated all fields emitted by html_app/app.js: ~14 building, 4 floor, ~12 room, ~30 log entry fields
+- Mapped each to Django model fields; flagged unmapped/lossy/ambiguous fields
+- Found sync pipeline passes only 9 of 24+ log entry fields and 4 of 12 room fields
+- Key finding: all 10 fixture flag fields (intSensor, embb, etc.), optic, ctrl_hours not in sync schema but model fields already exist
+- Listed 14 fields PWA emits that nothing consumes (utilityName, isNewAddition, recommendations, etc.)
+- Identified 7 Phase 2 spec-engine blockers (flags, optic, hours, recommendations, photo linking, floor plans, custom fixtures)
+- Provided 4 prioritized recommendations for minimal Phase 1 changes: expand sync schemas (no migration), update PWA payload, add ceiling_height field, return room name→PK mapping
+- Files changed: `docs/html-app-data-sync-review.md` (new), `ralph/prd.json`
+- **Learnings for future iterations:**
+  - PWA room metadata (height, dimensions, ceilingType) embedded in first log entry per room — not separate room objects
+  - PWA wiring flags stored as strings in `switchNotes[]` array ("3-Way", "A/B Switching", "No Neutral") — need parsing to Room.wiring_* booleans
+  - Building data not in sync payload by design — buildings pre-provisioned; sync looks up by client_uuid
+  - `Room.mount_height` semantically wrong for ceiling height; `ceiling_height` field recommended
+  - All missing sync fields already exist on Django models — gap is entirely in Ninja Schema definitions + PWA payload builder
+---
+
 ## 2026-05-26 - US-050
 - Added `openpyxl>=3.1.5` to pyproject.toml via `uv add openpyxl`
 - Added `_EXPORT_COLUMNS` list + `_build_export_rows(version_id)` helper in `audit/api/views.py`: fetches LogEntries for an AuditVersion (ordered by floor/room/fixture_id), joins active AuditFlags into a summary string per entry
