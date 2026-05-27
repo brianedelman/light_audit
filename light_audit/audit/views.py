@@ -12,6 +12,23 @@ from django.http import HttpResponse
 # Root of the bundled PWA output (created by `just html-app-build`)
 _PWA_DIR = Path(settings.BASE_DIR) / "dist" / "audit-pwa"
 
+# Root of the Vite-built React SPA
+_SPA_DIR = Path(settings.BASE_DIR) / "frontend" / "dist"
+
+
+def _spa_root() -> Path:
+    """Return the SPA output directory (allows easy patching in tests)."""
+    return _SPA_DIR
+
+
+def spa_index(request: HttpRequest, path: str = "") -> HttpResponse:
+    """Serve frontend/dist/index.html for all SPA routes."""
+    index = _spa_root() / "index.html"
+    if not index.exists():
+        msg = "Frontend not built — run `just frontend-build`"
+        raise Http404(msg)
+    return HttpResponse(index.read_bytes(), content_type="text/html; charset=utf-8")
+
 
 def _pwa_root() -> Path:
     """Return the PWA output directory (allows easy patching in tests)."""

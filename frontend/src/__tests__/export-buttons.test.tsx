@@ -22,8 +22,8 @@ const mockApi = api as unknown as {
 // jsdom doesn't implement URL.createObjectURL / revokeObjectURL
 const mockCreateObjectURL = vi.fn(() => 'blob:fake-url')
 const mockRevokeObjectURL = vi.fn()
-global.URL.createObjectURL = mockCreateObjectURL
-global.URL.revokeObjectURL = mockRevokeObjectURL
+window.URL.createObjectURL = mockCreateObjectURL as typeof URL.createObjectURL
+window.URL.revokeObjectURL = mockRevokeObjectURL as typeof URL.revokeObjectURL
 
 function makeWrapper() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })

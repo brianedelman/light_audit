@@ -1,8 +1,10 @@
 # ruff: noqa: E501
 from .base import *  # noqa: F403
+from .base import BASE_DIR
 from .base import DATABASES
 from .base import INSTALLED_APPS
 from .base import REDIS_URL
+from .base import STATICFILES_DIRS
 from .base import env
 
 # GENERAL
@@ -182,6 +184,17 @@ LOGGING = {
     },
 }
 
+
+# FRONTEND SPA
+# ------------------------------------------------------------------------------
+# Vite builds to frontend/dist/ with base=/static/spa/; whitenoise serves assets.
+STATICFILES_DIRS = [*STATICFILES_DIRS, ("spa", str(BASE_DIR / "frontend" / "dist"))]
+
+# CSRF trusted origins for custom domain
+CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
+
+# CORS
+CORS_ALLOWED_ORIGINS = env.list("DJANGO_CORS_ALLOWED_ORIGINS", default=[])
 
 # Your stuff...
 # ------------------------------------------------------------------------------

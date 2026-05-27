@@ -9,6 +9,7 @@ from django.views.generic import TemplateView
 
 from light_audit.audit.views import pwa_asset
 from light_audit.audit.views import pwa_index
+from light_audit.audit.views import spa_index
 
 from .api import api
 
@@ -41,6 +42,16 @@ if settings.DEBUG:
 urlpatterns += [
     # API base url
     path("api/", api.urls),
+]
+
+# SPA (React) catch-all — must come after API, admin, audit routes
+urlpatterns += [
+    path("login", spa_index),
+    path("password-reset", spa_index),
+    path("password-reset/confirm/<path:path>", spa_index),
+    path("projects", spa_index),
+    path("projects/<path:path>", spa_index),
+    path("audit-versions/<path:path>", spa_index),
 ]
 
 if settings.DEBUG:
