@@ -1,5 +1,26 @@
 Ralph progress log — Light Audit Platform Phase 1
 
+## 2026-05-26 - US-056
+- Updated `render.yaml`: web service (gunicorn+uvicorn ASGI), Celery worker, Celery beat, managed Postgres + Redis
+- Added R2, Anthropic, FRONTEND_URL, CSRF_TRUSTED_ORIGINS, CORS env vars to all services
+- Updated `build.sh`: installs Node 22 via nvm, runs `npm ci && npm run build` for frontend, bundles html_app PWA, then collectstatic + migrate
+- Updated `frontend/vite.config.ts`: production builds use `base: '/static/spa/'` so whitenoise serves assets
+- Updated `config/settings/production.py`: added `("spa", frontend/dist)` to STATICFILES_DIRS, added CSRF_TRUSTED_ORIGINS + CORS_ALLOWED_ORIGINS from env
+- Added `spa_index` view in `audit/views.py`: serves `frontend/dist/index.html` for SPA catch-all routes
+- Wired SPA routes in `config/urls.py`: /login, /password-reset, /projects, /projects/*, /audit-versions/*
+- Updated `README.md`: full deployment docs — services table, env var reference, pgvector note, custom domain instructions, smoke test checklist
+- Fixed pre-existing TS error in `export-buttons.test.tsx` (`global.URL` → `window.URL` assignment)
+- 6 new tests in `test_spa_views.py`: login/projects/nested/audit-versions routes return 200, HTML content-type, 404 when not built
+- 245 backend tests pass; 162 frontend tests pass; tsc + vite build clean
+- Files changed: `render.yaml`, `build.sh`, `config/settings/production.py`, `config/urls.py`, `frontend/vite.config.ts`, `light_audit/audit/views.py`, `light_audit/audit/test_spa_views.py` (new), `frontend/src/__tests__/export-buttons.test.tsx`, `README.md`
+- **Learnings for future iterations:**
+  - Render Python services can install Node via nvm in build.sh — `curl nvm install script → nvm install 22 → npm ci`
+  - Vite `command === 'build'` conditional in `defineConfig(({ command }) => ...)` lets you set different `base` for dev vs production
+  - STATICFILES_DIRS tuple format `("prefix", path)` puts files under a prefix in collectstatic output — e.g. `("spa", ...)` → `/static/spa/...`
+  - SPA catch-all uses explicit route prefixes (not a true `<path:path>` catch-all) to avoid conflicts with admin/api/audit
+  - `window.URL.createObjectURL = mockFn as typeof URL.createObjectURL` is the TS-safe way to mock URL methods in jsdom tests
+---
+
 ## 2026-05-26 - US-055
 - Created `docs/html-app-data-sync-review.md`: comprehensive field-by-field mapping of PWA sync payload vs Django models
 - Enumerated all fields emitted by html_app/app.js: ~14 building, 4 floor, ~12 room, ~30 log entry fields
