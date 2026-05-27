@@ -812,7 +812,7 @@
         "Recommendations for minimal PWA changes for Phase 1 end-to-end sync"
       ],
       "priority": 55,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
