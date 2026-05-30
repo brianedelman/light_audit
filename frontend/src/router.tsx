@@ -1,4 +1,5 @@
-import { createRouter, createRoute, createRootRoute, Outlet } from '@tanstack/react-router'
+import { createRouter, createRoute, createRootRoute, Outlet, redirect } from '@tanstack/react-router'
+import api from './lib/api'
 import LoginPage from './pages/LoginPage'
 import PasswordResetPage from './pages/PasswordResetPage'
 import PasswordResetConfirmPage from './pages/PasswordResetConfirmPage'
@@ -15,7 +16,16 @@ const rootRoute = createRootRoute({
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  component: () => <div>Home</div>,
+  beforeLoad: async () => {
+    let authed = false
+    try {
+      await api.get('/auth/me/', { skipAuthRedirect: true } as never)
+      authed = true
+    } catch {
+      authed = false
+    }
+    throw redirect({ to: authed ? '/projects' : '/login' })
+  },
 })
 
 const loginRoute = createRoute({

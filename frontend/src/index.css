@@ -1,1 +1,236 @@
 @import "tailwindcss";
+
+@theme {
+  --color-paper: #f3ecd6;
+  --color-paper-deep: #e7dfc9;
+  --color-paper-soft: #fbf6e6;
+  --color-ink: #1f2d33;
+  --color-ink-soft: #3f5a63;
+  --color-teal: #6e8f95;
+  --color-teal-soft: #a8c0c3;
+  --color-ember: #d96c3a;
+  --color-ember-soft: #e8a482;
+  --color-char: #2b2b2b;
+  --color-rule: #cdbf9b;
+
+  --font-display: "Fraunces", "Times New Roman", serif;
+  --font-sans:
+    "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+}
+
+:root {
+  color-scheme: light;
+  --brand-paper: #f3ecd6;
+  --brand-paper-deep: #e7dfc9;
+  --brand-ink: #1f2d33;
+  --brand-ink-soft: #3f5a63;
+  --brand-teal: #6e8f95;
+  --brand-ember: #d96c3a;
+  --brand-char: #2b2b2b;
+  --brand-rule: #cdbf9b;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--brand-ink);
+  background:
+    radial-gradient(
+      circle at 12% 8%,
+      rgba(217, 108, 58, 0.08),
+      transparent 38%
+    ),
+    radial-gradient(
+      circle at 92% 92%,
+      rgba(110, 143, 149, 0.12),
+      transparent 42%
+    ),
+    var(--brand-paper);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Grain overlay — subtle paper noise */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.35;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.16 0 0 0 0 0.18 0 0 0 0 0.2 0 0 0 0.18 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+::selection {
+  background: var(--brand-ember);
+  color: var(--brand-paper);
+}
+
+/* Headings default to Fraunces */
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  font-feature-settings: "ss01", "ss02";
+  letter-spacing: -0.01em;
+}
+
+/* Scrollbar — slim, paperish */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(63, 90, 99, 0.25);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(63, 90, 99, 0.45);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+
+/* Reusable utility classes */
+@layer components {
+  .det-card {
+    background: var(--brand-paper-soft);
+    border: 1px solid var(--brand-rule);
+    box-shadow:
+      0 1px 0 rgba(43, 43, 43, 0.04),
+      0 12px 32px -22px rgba(31, 45, 51, 0.45);
+  }
+  .det-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.125rem 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    line-height: 1.2;
+  }
+  .det-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.9rem;
+    font-family: var(--font-sans);
+    font-weight: 500;
+    font-size: 0.8125rem;
+    letter-spacing: 0.01em;
+    border-radius: 2px;
+    transition:
+      transform 0.15s ease,
+      box-shadow 0.2s ease,
+      background 0.2s ease;
+  }
+  .det-btn-primary {
+    background: var(--brand-ember);
+    color: var(--brand-paper);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.12) inset;
+  }
+  .det-btn-primary:hover {
+    background: #c45e2f;
+    transform: translateY(-1px);
+    box-shadow:
+      0 1px 0 rgba(0, 0, 0, 0.12) inset,
+      0 6px 14px -6px rgba(217, 108, 58, 0.5);
+  }
+  .det-btn-ghost {
+    background: transparent;
+    color: var(--brand-ink-soft);
+    border: 1px solid var(--brand-rule);
+  }
+  .det-btn-ghost:hover {
+    background: var(--brand-paper-deep);
+    color: var(--brand-ink);
+  }
+  .det-label {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--brand-ink-soft);
+  }
+  .det-input {
+    width: 100%;
+    background: var(--brand-paper-soft);
+    border: 1px solid var(--brand-rule);
+    border-bottom: 2px solid var(--brand-ink-soft);
+    padding: 0.55rem 0.75rem;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    color: var(--brand-ink);
+    border-radius: 2px;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .det-input:focus {
+    outline: none;
+    border-bottom-color: var(--brand-ember);
+    background: #fff;
+  }
+  .det-rule {
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      var(--brand-rule),
+      transparent
+    );
+  }
+}
+
+/* Page entrance — staggered */
+@keyframes det-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.det-rise {
+  animation: det-rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.det-rise-1 {
+  animation-delay: 0.05s;
+}
+.det-rise-2 {
+  animation-delay: 0.12s;
+}
+.det-rise-3 {
+  animation-delay: 0.2s;
+}
+.det-rise-4 {
+  animation-delay: 0.28s;
+}
+
+@keyframes det-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.det-spin-slow {
+  animation: det-spin 24s linear infinite;
+  transform-origin: center;
+}
