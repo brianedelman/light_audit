@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "../context/AuthContext";
+import { ToastProvider } from "../components/Toast";
 import ExportButtons from "../components/ExportButtons";
 
 vi.mock("../lib/api", () => ({
@@ -30,7 +31,9 @@ function makeWrapper() {
   return function Wrapper({ children }: { children: React.ReactNode }) {
     return (
       <QueryClientProvider client={qc}>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </AuthProvider>
       </QueryClientProvider>
     );
   };
@@ -118,13 +121,14 @@ describe("ExportButtons", () => {
     expect(mockCreateObjectURL).toHaveBeenCalled();
   });
 
-  it("shows error message on failure", async () => {
+  it("shows error toast on failure", async () => {
     mockApi.request.mockRejectedValue(new Error("Network error"));
     render(<ExportButtons versionId="5" />, { wrapper: makeWrapper() });
 
     fireEvent.click(screen.getByTestId("export-csv"));
 
-    expect(await screen.findByTestId("export-error")).toBeInTheDocument();
-    expect(screen.getByTestId("export-error").textContent).toContain("CSV");
+    const toast = await screen.findByTestId("toast-error");
+    expect(toast).toBeInTheDocument();
+    expect(toast.textContent).toContain("CSV");
   });
 });

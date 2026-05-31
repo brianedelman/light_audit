@@ -146,10 +146,23 @@ def _build_system_prompt(audit_version: AuditVersion) -> str:
         ]
         flag_str = f" [flags: {','.join(active_flags)}]" if active_flags else ""
         wattage = entry.wattage if entry.wattage is not None else "?"
+        attrs: list[str] = []
+        if entry.mount_type:
+            attrs.append(f"mount={entry.get_mount_type_display()}")
+        if entry.mount_height:
+            attrs.append(f"height={entry.mount_height}")
+        if entry.switch_type:
+            attrs.append(f"switch={entry.switch_type}")
+        if entry.controls:
+            attrs.append(f"controls={entry.controls}")
+        if entry.optic:
+            attrs.append(f"optic={entry.optic}")
+        attr_str = f" [{', '.join(attrs)}]" if attrs else ""
+        notes_str = f" — {entry.notes}" if entry.notes else ""
         lines.append(
             f"  {floor_name}/{room_name}: "
             f"{entry.fixture_id or 'entry'} x{entry.qty} {wattage}W"
-            f"{flag_str}",
+            f"{attr_str}{flag_str}{notes_str}",
         )
 
     # Inject dismissed flags so Claude knows what was already reviewed

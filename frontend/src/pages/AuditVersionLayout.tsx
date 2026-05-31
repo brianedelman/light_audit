@@ -46,31 +46,37 @@ export default function AuditVersionLayout() {
           <section className="relative shrink-0 overflow-hidden border-b border-(--brand-rule) bg-(--brand-paper-soft)/60 px-8 py-4">
             <Starburst className="det-spin-slow pointer-events-none absolute -top-6 -left-6 z-0 h-20 w-20 text-(--brand-teal)/20" />
             <div className="relative z-10 flex items-center justify-between gap-6">
-              <div className="flex items-center gap-4">
-                <a
-                  href={`/audit-versions/${versionId}`}
-                  className="group flex flex-col gap-1"
-                >
-                  <span className="det-label text-[0.6rem]!">Audit</span>
-                  <span className="font-display text-1xl font-medium tracking-tight text-(--brand-ink) group-hover:text-(--brand-ember)">
-                    Version {version?.version_number ?? "—"}
-                  </span>
-                </a>
-                {version?.label && (
-                  <span className="font-mono text-sm text-(--brand-ember)">
-                    {version.label}
-                  </span>
-                )}
-                {version?.is_current && (
-                  <span className="det-chip border-(--brand-teal)/60 text-(--brand-teal)">
-                    <span className="h-1.5 w-1.5 rounded-full bg-(--brand-teal)" />
-                    Current
-                  </span>
-                )}
-                {version && (
-                  <span className="det-chip border-(--brand-rule) text-(--brand-ink-soft) capitalize">
-                    {version.status.replace(/_/g, " ")}
-                  </span>
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-wrap items-end gap-3">
+                  <a
+                    href={`/audit-versions/${versionId}`}
+                    className="group flex flex-col"
+                  >
+                    <span className="det-label text-[0.6rem]!">Audit</span>
+                    <span className="font-display text-xl font-medium tracking-tight text-(--brand-ink) group-hover:text-(--brand-ember)">
+                      Version {version?.version_number ?? "—"}
+                    </span>
+                  </a>
+                  {version?.label && (
+                    <span className="font-mono text-sm text-(--brand-ember) leading-6">
+                      {version.label}
+                    </span>
+                  )}
+                </div>
+                {(version?.is_current || version) && (
+                  <div className="flex flex-wrap items-end gap-2">
+                    {version?.is_current && (
+                      <span className="det-chip border-(--brand-teal)/60 text-(--brand-teal)">
+                        <span className="h-1.5 w-1.5 rounded-full bg-(--brand-teal)" />
+                        Current
+                      </span>
+                    )}
+                    {version && (
+                      <span className="det-chip border-(--brand-rule) text-(--brand-ink-soft) capitalize">
+                        {version.status.replace(/_/g, " ")}
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
               <ExportButtons versionId={versionId} />
