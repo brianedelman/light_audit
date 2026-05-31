@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "@tanstack/react-router";
+import { useParams, useNavigate } from "@tanstack/react-router";
 import {
   createColumnHelper,
   flexRender,
@@ -54,6 +54,7 @@ function ActionButtons({
   buildingId: number;
 }) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const pushMutation = useMutation({
     mutationFn: () => api.post(`/audit-versions/${version.id}/push-to-ipad/`),
@@ -73,6 +74,18 @@ function ActionButtons({
 
   return (
     <div className="flex gap-2">
+      <button
+        onClick={() =>
+          navigate({
+            to: "/audit-versions/$versionId",
+            params: { versionId: String(version.id) },
+          })
+        }
+        className="det-btn det-btn-ghost !px-2.5 !py-1 !text-[0.7rem] uppercase tracking-[0.1em]"
+        data-testid={`open-version-${version.id}`}
+      >
+        Open
+      </button>
       <button
         onClick={() => pushMutation.mutate()}
         disabled={
@@ -293,7 +306,7 @@ export default function ProjectDetailPage() {
 
   if (projectLoading)
     return (
-      <AppShell breadcrumbs={[{ label: "Projects", to: "/projects" }]}>
+      <AppShell>
         <div className="flex flex-1 items-center justify-center text-sm text-[var(--brand-ink-soft)]">
           Loading project…
         </div>
@@ -302,7 +315,7 @@ export default function ProjectDetailPage() {
 
   if (projectError)
     return (
-      <AppShell breadcrumbs={[{ label: "Projects", to: "/projects" }]}>
+      <AppShell>
         <div className="flex flex-1 items-center justify-center">
           <div className="det-card border-l-4 border-l-[var(--brand-ember)] rounded-sm p-6 text-sm">
             <p>Failed to load project.</p>
@@ -314,11 +327,11 @@ export default function ProjectDetailPage() {
   if (!project) return null;
 
   return (
-    <AppShell breadcrumbs={[{ label: "Projects", to: "/projects" }]}>
+    <AppShell>
       <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Hero */}
         <section className="relative shrink-0 border-b border-[var(--brand-rule)] bg-[var(--brand-paper-soft)]/60 px-10 pt-10 pb-8">
-          <Starburst className="absolute right-10 top-8 h-16 w-16 text-[var(--brand-ember)]/40 det-spin-slow" />
+          <Starburst className="pointer-events-none absolute right-10 top-8 h-16 w-16 text-[var(--brand-ember)]/40 det-spin-slow" />
           <div className="det-label det-rise">Project file</div>
           <h1 className="mt-2 font-display text-5xl font-medium leading-none tracking-tight text-[var(--brand-ink)] det-rise det-rise-1">
             {project.name}

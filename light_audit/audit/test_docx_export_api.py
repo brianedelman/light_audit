@@ -90,12 +90,12 @@ def api_client(client, user):
 
 
 def test_docx_auth_required(client, version):
-    resp = client.post(f"/api/audit-versions/{version.pk}/export/docx/")
+    resp = client.get(f"/api/audit-versions/{version.pk}/export/docx/")
     assert resp.status_code == HTTPStatus.UNAUTHORIZED
 
 
 def test_docx_returns_file(api_client, version, agent_run):
-    resp = api_client.post(f"/api/audit-versions/{version.pk}/export/docx/")
+    resp = api_client.get(f"/api/audit-versions/{version.pk}/export/docx/")
     assert resp.status_code == HTTPStatus.OK
     assert "wordprocessingml" in resp["Content-Type"]
     assert f"audit-narrative-{version.pk}.docx" in resp["Content-Disposition"]
@@ -103,17 +103,17 @@ def test_docx_returns_file(api_client, version, agent_run):
 
 def test_docx_404_no_run(api_client, version):
     """No AgentRun → 404."""
-    resp = api_client.post(f"/api/audit-versions/{version.pk}/export/docx/")
+    resp = api_client.get(f"/api/audit-versions/{version.pk}/export/docx/")
     assert resp.status_code == HTTPStatus.NOT_FOUND
 
 
 def test_docx_404_unknown_version(api_client):
-    resp = api_client.post("/api/audit-versions/99999/export/docx/")
+    resp = api_client.get("/api/audit-versions/99999/export/docx/")
     assert resp.status_code == HTTPStatus.NOT_FOUND
 
 
 def test_docx_contains_summary(api_client, version, agent_run):
-    resp = api_client.post(f"/api/audit-versions/{version.pk}/export/docx/")
+    resp = api_client.get(f"/api/audit-versions/{version.pk}/export/docx/")
     doc = docx.Document(io.BytesIO(resp.content))
     text = "\n".join(p.text for p in doc.paragraphs)
     assert "This building has several issues" in text
@@ -122,7 +122,7 @@ def test_docx_contains_summary(api_client, version, agent_run):
 
 def test_docx_flags_block_stripped_from_summary(api_client, version, agent_run):
     """The raw ```flags``` block must NOT appear in the docx text."""
-    resp = api_client.post(f"/api/audit-versions/{version.pk}/export/docx/")
+    resp = api_client.get(f"/api/audit-versions/{version.pk}/export/docx/")
     doc = docx.Document(io.BytesIO(resp.content))
     text = "\n".join(p.text for p in doc.paragraphs)
     assert "```flags" not in text
@@ -136,7 +136,7 @@ def test_docx_includes_flag_details(api_client, version, agent_run, log_entry):
         message="Replace this fixture immediately.",
         source_run=agent_run,
     )
-    resp = api_client.post(f"/api/audit-versions/{version.pk}/export/docx/")
+    resp = api_client.get(f"/api/audit-versions/{version.pk}/export/docx/")
     doc = docx.Document(io.BytesIO(resp.content))
     text = "\n".join(p.text for p in doc.paragraphs)
     assert "Replace this fixture immediately." in text
@@ -152,7 +152,7 @@ def test_docx_dismissed_flags_excluded(api_client, version, agent_run, log_entry
         source_run=agent_run,
     )
     flag.dismiss(user=user, reason="not relevant")
-    resp = api_client.post(f"/api/audit-versions/{version.pk}/export/docx/")
+    resp = api_client.get(f"/api/audit-versions/{version.pk}/export/docx/")
     doc = docx.Document(io.BytesIO(resp.content))
     text = "\n".join(p.text for p in doc.paragraphs)
     assert "This should be hidden." not in text
@@ -160,7 +160,7 @@ def test_docx_dismissed_flags_excluded(api_client, version, agent_run, log_entry
 
 def test_docx_no_flags_message(api_client, version, agent_run):
     """When no active flags, document says so."""
-    resp = api_client.post(f"/api/audit-versions/{version.pk}/export/docx/")
+    resp = api_client.get(f"/api/audit-versions/{version.pk}/export/docx/")
     doc = docx.Document(io.BytesIO(resp.content))
     text = "\n".join(p.text for p in doc.paragraphs)
     assert "No active flags" in text

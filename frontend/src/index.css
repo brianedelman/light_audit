@@ -172,20 +172,31 @@ h4 {
   }
   .det-input {
     width: 100%;
-    background: var(--brand-paper-soft);
-    border: 1px solid var(--brand-rule);
-    border-bottom: 2px solid var(--brand-ink-soft);
+    background: #fffdf5;
+    border: 1px solid var(--brand-ink-soft);
+    border-bottom: 2px solid var(--brand-ink);
     padding: 0.55rem 0.75rem;
     font-family: var(--font-sans);
     font-size: 0.875rem;
     color: var(--brand-ink);
     border-radius: 2px;
-    transition: border-color 0.15s ease, background 0.15s ease;
+    box-shadow: inset 0 1px 0 rgba(31, 45, 51, 0.04);
+    transition: border-color 0.15s ease, background 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+  .det-input::placeholder {
+    color: var(--brand-ink-soft);
+    opacity: 0.6;
+  }
+  .det-input:hover:not(:disabled) {
+    border-color: var(--brand-ink);
   }
   .det-input:focus {
     outline: none;
+    border-color: var(--brand-ember);
     border-bottom-color: var(--brand-ember);
     background: #fff;
+    box-shadow: 0 0 0 3px rgba(217, 108, 58, 0.18);
   }
   .det-rule {
     height: 1px;

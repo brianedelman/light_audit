@@ -5,6 +5,7 @@ import PasswordResetPage from './pages/PasswordResetPage'
 import PasswordResetConfirmPage from './pages/PasswordResetConfirmPage'
 import ProjectsListPage from './pages/ProjectsListPage'
 import ProjectDetailPage from './pages/ProjectDetailPage'
+import AuditVersionLayout from './pages/AuditVersionLayout'
 import AuditVersionPage from './pages/AuditVersionPage'
 import AuditVersionFloorPage from './pages/AuditVersionFloorPage'
 import AuditVersionRoomPage from './pages/AuditVersionRoomPage'
@@ -58,21 +59,27 @@ const projectDetailRoute = createRoute({
   component: ProjectDetailPage,
 })
 
-const auditVersionRoute = createRoute({
+const auditVersionLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/audit-versions/$versionId',
+  component: AuditVersionLayout,
+})
+
+const auditVersionIndexRoute = createRoute({
+  getParentRoute: () => auditVersionLayoutRoute,
+  path: '/',
   component: AuditVersionPage,
 })
 
 const auditVersionFloorRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/audit-versions/$versionId/floors/$floorId',
+  getParentRoute: () => auditVersionLayoutRoute,
+  path: 'floors/$floorId',
   component: AuditVersionFloorPage,
 })
 
 const auditVersionRoomRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/audit-versions/$versionId/rooms/$roomId',
+  getParentRoute: () => auditVersionLayoutRoute,
+  path: 'rooms/$roomId',
   component: AuditVersionRoomPage,
 })
 
@@ -83,9 +90,11 @@ const routeTree = rootRoute.addChildren([
   passwordResetConfirmRoute,
   projectsRoute,
   projectDetailRoute,
-  auditVersionRoute,
-  auditVersionFloorRoute,
-  auditVersionRoomRoute,
+  auditVersionLayoutRoute.addChildren([
+    auditVersionIndexRoute,
+    auditVersionFloorRoute,
+    auditVersionRoomRoute,
+  ]),
 ])
 
 export const router = createRouter({ routeTree })

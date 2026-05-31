@@ -11,7 +11,6 @@ import {
   type SortingState,
 } from '@tanstack/react-table'
 import api from '../lib/api'
-import FloorTreeSidebar from '../components/FloorTreeSidebar'
 import PanoramaViewer from '../components/PanoramaViewer'
 
 interface Photo {
@@ -234,7 +233,7 @@ function DismissModal({
         <textarea
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          className="mb-4 w-full rounded border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          className="det-input mb-4 resize-none"
           rows={3}
           placeholder="Reason (optional)"
           data-testid="dismiss-reason-input"
@@ -521,7 +520,7 @@ function LogEntriesTable({ versionId, roomId }: { versionId: string; roomId: str
             placeholder="Filter entries…"
             value={globalFilter}
             onChange={(e) => setGlobalFilter(e.target.value)}
-            className="rounded border border-gray-300 px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="det-input max-w-xs"
             data-testid="log-entries-filter"
           />
           <span className="text-sm text-gray-500">
@@ -592,51 +591,107 @@ export default function AuditVersionRoomPage() {
     },
   })
 
-  if (isLoading) return <div className="p-8">Loading room…</div>
-  if (error) return <div className="p-8 text-red-600">Failed to load room.</div>
+  if (isLoading)
+    return (
+      <div
+        className="flex flex-1 items-center justify-center p-10 text-sm text-(--brand-ink-soft)"
+        data-testid="room-page"
+      >
+        Loading room…
+      </div>
+    )
+  if (error)
+    return (
+      <div
+        className="flex flex-1 items-center justify-center p-10"
+        data-testid="room-page"
+      >
+        <div className="det-card border-l-4 border-l-(--brand-ember) rounded-sm p-6 text-sm">
+          Failed to load room.
+        </div>
+      </div>
+    )
   if (!room) return null
 
   return (
-    <div className="flex h-full" data-testid="room-page">
-      <FloorTreeSidebar versionId={versionId} activeRoomId={roomId} />
-      <div className="flex-1 overflow-auto p-8">
-        <h1 className="mb-4 text-2xl font-bold">{room.name}</h1>
-        <dl className="mb-6 space-y-2 text-sm">
+    <div className="flex flex-1 flex-col" data-testid="room-page">
+      <section className="shrink-0 border-b border-(--brand-rule) bg-(--brand-paper-soft)/40 px-10 pt-8 pb-5">
+        <div className="det-label">Room</div>
+        <h1 className="mt-2 font-display text-3xl font-medium leading-none tracking-tight text-(--brand-ink)">
+          {room.name}
+        </h1>
+        <dl className="mt-5 grid max-w-3xl grid-cols-2 gap-x-10 gap-y-3 text-sm sm:grid-cols-4">
           {room.room_type && (
-            <div>
-              <dt className="inline font-medium text-gray-500">Type: </dt>
-              <dd className="inline">{room.room_type}</dd>
-            </div>
+            <RoomFact label="Type" value={room.room_type} />
           )}
           {room.zone_label && (
-            <div>
-              <dt className="inline font-medium text-gray-500">Zone: </dt>
-              <dd className="inline">{room.zone_label}</dd>
-            </div>
+            <RoomFact label="Zone" value={room.zone_label} mono />
           )}
           {room.pin_code && (
-            <div>
-              <dt className="inline font-medium text-gray-500">Pin Code: </dt>
-              <dd className="inline">{room.pin_code}</dd>
-            </div>
+            <RoomFact label="Pin Code" value={room.pin_code} mono />
           )}
           {room.square_feet != null && (
-            <div>
-              <dt className="inline font-medium text-gray-500">Square Feet: </dt>
-              <dd className="inline">{room.square_feet}</dd>
-            </div>
-          )}
-          {room.notes && (
-            <div>
-              <dt className="mb-1 font-medium text-gray-500">Notes:</dt>
-              <dd className="whitespace-pre-wrap rounded bg-gray-50 p-2">{room.notes}</dd>
-            </div>
+            <RoomFact
+              label="Square Feet"
+              value={String(room.square_feet)}
+              accent
+            />
           )}
         </dl>
-        <h2 className="mb-3 text-lg font-semibold">Photos</h2>
+        {room.notes && (
+          <div className="mt-4 max-w-3xl">
+            <div className="det-label mb-1">Notes</div>
+            <div className="det-card rounded-sm p-3 text-sm whitespace-pre-wrap text-(--brand-ink)">
+              {room.notes}
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section className="min-h-0 flex-1 overflow-auto px-10 py-6">
+        <div className="mb-3 flex items-end justify-between">
+          <h2 className="font-display text-xl font-medium tracking-tight text-(--brand-ink)">
+            Photos
+          </h2>
+        </div>
         <PhotoGrid versionId={versionId} roomId={roomId} />
-        <h2 className="mb-3 mt-8 text-lg font-semibold">Log Entries</h2>
+
+        <div className="mt-10 mb-3 flex items-end justify-between">
+          <h2 className="font-display text-xl font-medium tracking-tight text-(--brand-ink)">
+            Log Entries
+          </h2>
+        </div>
         <LogEntriesTable versionId={versionId} roomId={roomId} />
+      </section>
+    </div>
+  )
+}
+
+function RoomFact({
+  label,
+  value,
+  mono,
+  accent,
+}: {
+  label: string
+  value: string
+  mono?: boolean
+  accent?: boolean
+}) {
+  return (
+    <div>
+      <div className="det-label">{label}</div>
+      <div
+        className={
+          'mt-1 ' +
+          (accent
+            ? 'font-display text-2xl font-medium text-(--brand-ember)'
+            : mono
+              ? 'font-mono text-sm text-(--brand-ink)'
+              : 'text-sm font-medium text-(--brand-ink)')
+        }
+      >
+        {value}
       </div>
     </div>
   )

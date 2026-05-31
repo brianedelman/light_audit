@@ -279,7 +279,7 @@ def export_audit_csv(request, version_id: int):
 _FLAGS_BLOCK_RE = re.compile(r"```flags\n.*?```", re.DOTALL)
 
 
-@audit_versions_router.post("/{version_id}/export/docx/")
+@audit_versions_router.get("/{version_id}/export/docx/")
 def export_audit_docx(request, version_id: int):
     """Export the latest audit_review agent narrative as a .docx file."""
     version = get_object_or_404(AuditVersion, pk=version_id)

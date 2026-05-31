@@ -59,11 +59,11 @@ export default function ProjectsListPage() {
   );
 
   return (
-    <AppShell breadcrumbs={[{ label: "Projects" }]}>
+    <AppShell>
       <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Page header */}
         <section className="relative shrink-0 border-b border-[var(--brand-rule)] bg-[var(--brand-paper-soft)]/60 px-10 pt-10 pb-6">
-          <Starburst className="absolute right-10 top-6 h-20 w-20 text-[var(--brand-teal)]/30 det-spin-slow" />
+          <Starburst className="pointer-events-none absolute right-10 top-6 h-20 w-20 text-[var(--brand-teal)]/30 det-spin-slow" />
           <div className="det-label det-rise">All engagements</div>
           <div className="mt-2 flex items-end justify-between gap-6 det-rise det-rise-1">
             <h1 className="font-display text-5xl font-medium leading-none tracking-tight text-[var(--brand-ink)]">

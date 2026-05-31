@@ -1,18 +1,15 @@
-import { DetMark, Diamond } from "./Brand";
+import { useNavigate } from "@tanstack/react-router";
+import { DetMark } from "./Brand";
 import { useAuth } from "../context/AuthContext";
 
 interface AppShellProps {
   children: React.ReactNode;
   rightSlot?: React.ReactNode;
-  breadcrumbs?: { label: string; to?: string }[];
 }
 
-export default function AppShell({
-  children,
-  rightSlot,
-  breadcrumbs,
-}: AppShellProps) {
+export default function AppShell({ children, rightSlot }: AppShellProps) {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const pathname =
     typeof window !== "undefined" ? window.location.pathname : "";
   const onProjects = pathname.startsWith("/projects");
@@ -22,7 +19,11 @@ export default function AppShell({
       <header className="relative shrink-0 border-b border-(--brand-rule) bg-(--brand-paper-soft)/80 backdrop-blur-sm">
         <div className="flex items-center justify-between px-6 py-3">
           <div className="flex items-center gap-4">
-            <a href="/projects" className="group flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => void navigate({ to: "/projects" })}
+              className="group flex items-center gap-3"
+            >
               <DetMark className="h-10 w-10" />
               <div className="flex flex-col leading-none">
                 <span className="font-display text-2xl font-semibold tracking-tight text-(--brand-ink)">
@@ -32,47 +33,25 @@ export default function AppShell({
                   Lighting · Energy · AI
                 </span>
               </div>
-            </a>
+            </button>
             <span className="mx-3 hidden h-8 w-px bg-(--brand-rule) md:block" />
             <nav className="hidden items-center gap-1 md:flex">
-              <a
-                href="/projects"
+              <button
+                type="button"
+                onClick={() => void navigate({ to: "/projects" })}
                 className={
                   "rounded-sm px-3 py-1.5 text-sm font-medium tracking-tight transition " +
                   (onProjects
-                    ? "bg-(--brand-ink) text-(--brand-paper)"
-                    : "text-(--brand-ink-soft) hover:bg-(--brand-paper-deep)")
+                    ? "bg-(--brand-ink) text-(--brand-paper) hover:bg-(--brand-ink-soft)"
+                    : "text-(--brand-ink-soft) hover:bg-(--brand-paper-deep) hover:text-(--brand-ink)")
                 }
               >
                 Projects
-              </a>
+              </button>
             </nav>
           </div>
 
           <div className="flex items-center gap-4">
-            {breadcrumbs && breadcrumbs.length > 0 && (
-              <div className="hidden items-center gap-2 text-xs text-(--brand-ink-soft) md:flex">
-                {breadcrumbs.map((b, i) => (
-                  <span key={i} className="flex items-center gap-2">
-                    {i > 0 && (
-                      <Diamond className="h-3 w-2 text-(--brand-ember)/60" />
-                    )}
-                    {b.to ? (
-                      <a
-                        href={b.to}
-                        className="hover:text-(--brand-ink) hover:underline"
-                      >
-                        {b.label}
-                      </a>
-                    ) : (
-                      <span className="font-medium text-(--brand-ink)">
-                        {b.label}
-                      </span>
-                    )}
-                  </span>
-                ))}
-              </div>
-            )}
             {user && (
               <div className="flex items-center gap-3">
                 <div className="hidden text-right text-xs leading-tight sm:block">

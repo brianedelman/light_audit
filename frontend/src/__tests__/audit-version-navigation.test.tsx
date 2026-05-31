@@ -113,13 +113,12 @@ describe('AuditVersionPage', () => {
     })
   })
 
-  it('renders version info and floor tree sidebar', async () => {
+  it('renders version info', async () => {
     render(<AuditVersionPage />, { wrapper: makeWrapper() })
 
     expect(await screen.findByTestId('audit-version-page')).toBeInTheDocument()
     expect(await screen.findByText('Version 3')).toBeInTheDocument()
     expect(screen.getByText('Sprint A')).toBeInTheDocument()
-    expect(await screen.findByTestId('floor-tree-sidebar')).toBeInTheDocument()
   })
 })
 
@@ -192,14 +191,12 @@ describe('AuditVersionFloorPage', () => {
     })
   })
 
-  it('renders floor page with sidebar and floor content', async () => {
+  it('renders floor page with floor content', async () => {
     render(<AuditVersionFloorPage />, { wrapper: makeWrapper() })
 
     expect(await screen.findByTestId('floor-page')).toBeInTheDocument()
     const groundFloorEls = await screen.findAllByText('Ground Floor')
     expect(groundFloorEls.length).toBeGreaterThan(0)
-    expect(await screen.findByTestId('floor-tree-sidebar')).toBeInTheDocument()
-    // Room list in main content
     const lobbies = await screen.findAllByText('Lobby')
     expect(lobbies.length).toBeGreaterThan(0)
   })
@@ -216,7 +213,7 @@ describe('AuditVersionRoomPage', () => {
     })
   })
 
-  it('renders room page with sidebar and room detail', async () => {
+  it('renders room page with room detail', async () => {
     render(<AuditVersionRoomPage />, { wrapper: makeWrapper() })
 
     expect(await screen.findByTestId('room-page')).toBeInTheDocument()
@@ -224,6 +221,5 @@ describe('AuditVersionRoomPage', () => {
     expect(screen.getByText('reception')).toBeInTheDocument()
     expect(screen.getByText('500')).toBeInTheDocument()
     expect(screen.getByText('Main entrance')).toBeInTheDocument()
-    expect(await screen.findByTestId('floor-tree-sidebar')).toBeInTheDocument()
   })
 })
